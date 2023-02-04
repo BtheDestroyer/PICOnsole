@@ -7,6 +7,7 @@ const uint LED_PIN{ 25u };
 OS::OS()
 {
     stdio_init_all();
+    print("Initializing LCD interface...\n");
     lcd = std::make_unique<LCD_MODEL>();
     if (!lcd)
     {
@@ -15,10 +16,20 @@ OS::OS()
     }
     print("Created LCD interface with a baudrate of %u\n", lcd->get_baudrate());
 
+    print("Displaying color test...\n");
+    show_color_test();
+
+    print("Creating SD interface...\n");
+    sd = std::make_unique<SDCard>();
+    if (!sd)
+    {
+        print("Failed to create SD interface!\n");
+        exit(-2);
+    }
+    print("Created SD interface\n");
+
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
-
-    show_color_test();
 }
 
 void OS::show_color_test()

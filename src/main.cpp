@@ -31,10 +31,12 @@ static void benchmark(std::function<void()> tested_function, std::size_t count)
 int main() {
     bi_decl(bi_program_description("Basic OS for the RP2040 intended for launching games\nCreated by Bryce Dixon; https://brycedixon.dev/"));
 
-    OS os;
+    std::unique_ptr<OS> os{ std::make_unique<OS>() };
+    const std::string file_contents{ os->get_sd()->read_text_file("test01.txt") };
+    print("%s", file_contents.c_str());
 
-    while(os.is_active())
+    while(os->is_active())
     {
-        os.update();
+        os->update();
     }
 }

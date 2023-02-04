@@ -67,6 +67,10 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "span": "cpp",
-        "numbers": "cpp"
+        "numbers": "cpp",
+        "ff.h": "c",
+        "sstream": "cpp",
+        "ctime": "cpp",
+        "iomanip": "cpp"
     }
 }
