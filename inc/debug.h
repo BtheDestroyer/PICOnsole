@@ -5,5 +5,5 @@
 #include <stdio.h>
 #define print printf
 #else
-#define print
+#define print(...)
 #endif

@@ -71,6 +71,8 @@
         "ff.h": "c",
         "sstream": "cpp",
         "ctime": "cpp",
-        "iomanip": "cpp"
-    }
+        "iomanip": "cpp",
+        "cstring": "cpp"
+    },
+    "cortex-debug.variableUseNaturalFormat": false
 }

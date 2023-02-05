@@ -111,14 +111,14 @@ FSIZE_t SDCard::get_file_size(const char* path) const
     return get_file_info(path).fsize;
 }
 
-std::string SDCard::read_text_file(const char* path) const
+string SDCard::read_text_file(const char* path) const
 {
-    std::string contents;
+    string contents;
     read_text_file(path, contents);
     return contents;
 }
 
-bool SDCard::read_text_file(const char* path, std::string& out_contents) const
+bool SDCard::read_text_file(const char* path, string& out_contents) const
 {
     FIL file_handle;
     const FRESULT open_result{ f_open(&file_handle, path, FA_READ) };
@@ -158,10 +158,10 @@ bool SDCard::read_text_file(const char* path, std::string& out_contents) const
     return true;
 }
 
-std::vector<std::uint8_t> SDCard::read_binary_file(const char* path) const
+vector<std::uint8_t> SDCard::read_binary_file(const char* path) const
 {
     const FSIZE_t file_size{ get_file_size(path) };
-    std::vector<std::uint8_t> contents(file_size);
+    vector<std::uint8_t> contents(file_size);
     read_binary_file(path, {contents.begin(), contents.end()});
     return contents;
 }
@@ -245,7 +245,7 @@ bool SDCard::write_text_file(const char* path, std::string_view contents)
     return true;
 }
 
-bool SDCard::write_binary_file(const char* path, std::span<std::uint8_t> buffer)
+bool SDCard::write_binary_file(const char* path, std::span<const std::uint8_t> buffer)
 {
     FIL file_handle;
     const FRESULT open_result{ f_open(&file_handle, path, FA_WRITE | FA_CREATE_ALWAYS) };

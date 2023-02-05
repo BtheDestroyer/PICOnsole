@@ -5,6 +5,8 @@
 #include "hardware/dma.h"
 #include <stdlib.h>
 
+spi_inst_t *SPILCD::get_spi() { return LCD_SPI; }
+
 SPILCD::SPILCD()
     : backlight_config{pwm_get_default_config()}
 {

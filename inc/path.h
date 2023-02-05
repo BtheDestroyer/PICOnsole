@@ -1,5 +1,5 @@
 #pragma once
-#include <string>
+#include "memory.h"
 #include <string_view>
 #include <utility>
 
@@ -22,9 +22,10 @@ public:
     static const std::string_view dir_name(const std::string_view path) { return split(path).first; }
     static const std::string_view base_name(const std::string_view path) { return split(path).second; }
 
-    static std::string join(const std::string_view a, const std::string_view b)
+    template <typename Allocator>
+    static basic_string<Allocator> join(const std::string_view a, const std::string_view b)
     {
-        std::string path{a};
+        basic_string<Allocator> path{a};
         if (!a.ends_with('/'))
         {
             path += '/';

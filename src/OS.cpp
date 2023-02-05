@@ -1,14 +1,22 @@
 #include "OS.h"
-#include "debug.h"
 #include "pico/stdlib.h"
+#include "LCD.h"
+#include "SD.h"
+#include "debug.h"
+#include "memory.h"
 
-const uint LED_PIN{ 25u };
+constexpr uint LED_PIN{ 25u };
 
 OS::OS()
 {
     stdio_init_all();
-    print("Initializing LCD interface...\n");
-    lcd = std::make_unique<LCD_MODEL>();
+    print("sizeof(OS): %d\n", sizeof(OS));
+    print("os: %x\n", this);
+    print("Initializing Memory...\n");
+    Memory::init();
+    print("Memory initialized; %d bytes available (%d used for first block header)\n", Memory::free_dynamic_memory, Memory::get_total_allocated_dynamic_memory());
+    print("Initializing LCD interface (%d bytes)...\n", sizeof(LCD_MODEL));
+    lcd = Memory::allocate_OS<LCD_MODEL>();
     if (!lcd)
     {
         print("Failed to create LCD interface!\n");
@@ -19,8 +27,8 @@ OS::OS()
     print("Displaying color test...\n");
     show_color_test();
 
-    print("Creating SD interface...\n");
-    sd = std::make_unique<SDCard>();
+    print("Creating SD interface (%d bytes)...\n", sizeof(SDCard));
+    sd = Memory::allocate_OS<SDCard>();
     if (!sd)
     {
         print("Failed to create SD interface!\n");
@@ -30,6 +38,11 @@ OS::OS()
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
+    string test{"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"};
+    print("%s\n", test.c_str());
+    const auto free_memory_string{ Memory::human_readable<Memory::OSAllocator<char>>(Memory::free_dynamic_memory) };
+    const auto used_memory_string{ Memory::human_readable<Memory::OSAllocator<char>>(Memory::get_total_allocated_dynamic_memory()) };
+    print("OS initialized; %s of SRAM available (%s used for OS)\n", free_memory_string.c_str(), used_memory_string.c_str());
 }
 
 void OS::show_color_test()

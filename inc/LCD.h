@@ -66,7 +66,7 @@ public:
     virtual void set_backlight_strength(float strength);
 
 protected:
-    static spi_inst_t* get_spi() { return spi1; }
+    static spi_inst_t* get_spi();
 
 private:
     uint baudrate{0};

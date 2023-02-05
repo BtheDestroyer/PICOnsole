@@ -9,10 +9,12 @@ set(CMAKE_CXX_STANDARD 20)
 
 pico_sdk_init()
 
-add_subdirectory(libs/FatFS_SD/FatFs_SPI build)
+add_subdirectory(libs/FatFS_SD/FatFs_SPI)
+add_subdirectory(example_program)
 
 add_executable(piconsole
     "src/LCD.cpp"
+    "src/memory.cpp"
     "src/main.cpp"
     "src/SD.cpp"
     "src/OS.cpp"
@@ -29,6 +31,8 @@ target_compile_definitions(piconsole
         _DEBUG=1
 
         LCD_MODEL=PicoLCD_1_8
+        LCD_SPI=spi1
+        
         LCD_CS=9
         LCD_CS_ACTIVE_POLARITY=0
         LCD_RST=12
@@ -38,13 +42,14 @@ target_compile_definitions(piconsole
         LCD_BACKLIGHT=13
 
         SD_SPI=spi0
+
         SD_CS=5
         SD_CS_ACTIVE_POLARITY=0
         SD_SCK=2
         SD_MOSI=3
         SD_MISO=4
     )
-target_compile_options(piconsole PUBLIC -Ofast)
+#target_compile_options(piconsole PUBLIC -Ofast)
 
 pico_enable_stdio_usb(piconsole 0)
 pico_enable_stdio_uart(piconsole 1)
