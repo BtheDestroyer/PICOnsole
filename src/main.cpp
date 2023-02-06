@@ -27,15 +27,15 @@ static void benchmark(std::function<void()> tested_function, std::size_t count)
     print("Completed in %lluus! Average of %.0fus\n", delta, average);
 }
 
-OS os;
-
 int main() {
     bi_decl(bi_program_description("Basic OS for the RP2040 intended for launching games\nCreated by Bryce Dixon; https://brycedixon.dev/"));
+    
+    OS& os{ OS::get() };
 
     print("&os: 0x%x\n", &os);
 
     {
-        const string file_contents{ os.get_sd()->read_text_file("test01.txt") };
+        const std::string file_contents{ os.get_sd().read_text_file("test01.txt") };
         print("%s", file_contents.c_str());
     }
 

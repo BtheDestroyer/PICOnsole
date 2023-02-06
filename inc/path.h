@@ -22,10 +22,9 @@ public:
     static const std::string_view dir_name(const std::string_view path) { return split(path).first; }
     static const std::string_view base_name(const std::string_view path) { return split(path).second; }
 
-    template <typename Allocator>
-    static basic_string<Allocator> join(const std::string_view a, const std::string_view b)
+    static std::string join(const std::string_view a, const std::string_view b)
     {
-        basic_string<Allocator> path{a};
+        std::string path{a};
         if (!a.ends_with('/'))
         {
             path += '/';

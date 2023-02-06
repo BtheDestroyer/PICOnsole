@@ -6,6 +6,12 @@
 #include "hardware/spi.h"
 #include "hardware/pwm.h"
 
+extern "C"
+{
+    extern std::uint8_t __piconsole_lcd_buffer[];
+    extern void *__piconsole_lcd_buffer_end[];
+}
+
 inline constexpr std::uint8_t operator ""_b(unsigned long long v)
 {
     return static_cast<std::uint8_t>(v);
@@ -43,7 +49,7 @@ public:
 class SPILCD
 {
 public:
-    SPILCD();
+    bool init();
     virtual ~SPILCD();
 
     [[nodiscard]] virtual constexpr std::size_t get_width() const = 0;
@@ -65,6 +71,8 @@ public:
     constexpr const uint& get_baudrate() const { return baudrate; }
     virtual void set_backlight_strength(float strength);
 
+    constexpr static std::size_t buffer_size{ 0 };
+
 protected:
     static spi_inst_t* get_spi();
 
@@ -84,6 +92,8 @@ public:
     using ColorFormat = TColorFormat;
     constexpr static std::size_t width{ TWidth };
     constexpr static std::size_t height{ THeight };
+    constexpr static std::size_t buffer_size{ width * height * sizeof(ColorFormat) };
+    using buffer_type = std::array<ColorFormat, width * height>;
 
     [[nodiscard]] constexpr std::size_t get_bytes_per_pixel() const override { return sizeof(ColorFormat); };
     [[nodiscard]] constexpr std::size_t get_width() const override { return TWidth; }
@@ -124,12 +134,18 @@ public:
             ++y;
         }
     }
+
+protected:
+    static inline buffer_type &get_buffer() { return *reinterpret_cast<buffer_type*>(__piconsole_lcd_buffer); };
 };
 
 class PicoLCD_1_8 : public ColorLCD<RGB565, 160, 128>
 {
 public:
-    PicoLCD_1_8();
+    using ColorLCD::buffer_size;
+    using ColorLCD::buffer_type;
+
+    bool init();
     virtual ~PicoLCD_1_8();
 
     void show() override;
@@ -137,11 +153,11 @@ public:
     // Drawing
     [[nodiscard]] inline const ColorFormat& get_pixel(std::size_t x, std::size_t y) const override
     {
-        return buffer[x + y * get_width()];
+        return get_buffer()[x + y * get_width()];
     }
     inline void set_pixel(ColorFormat color, std::size_t x, std::size_t y) override
     {
-        buffer[x + y * get_width()] = color;
+        get_buffer()[x + y * get_width()] = color;
     }
     void fill(ColorFormat color) override;
     void line_horizontal(ColorFormat color, std::size_t x, std::size_t y, std::size_t width) override;
@@ -150,8 +166,7 @@ public:
     virtual void wait_for_dma() const;
 
 private:
-    std::array<RGB565, width * height> buffer;
-    int dma_channel;
+    int dma_channel{ -1 };
 };
 
 namespace color

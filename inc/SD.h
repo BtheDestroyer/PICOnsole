@@ -7,13 +7,12 @@
 #include <iomanip>
 #include <vector>
 #include "ff.h"
-#include "memory.h"
 #include "debug.h"
 
 class SDCard
 {
 public:
-    SDCard();
+    bool init();
     virtual ~SDCard();
 
     [[nodiscard]] bool is_valid() const { return mount_result == FR_OK; }
@@ -22,9 +21,9 @@ public:
     virtual FILINFO get_file_info(const char* path) const;
     virtual FSIZE_t get_file_size(const char* path) const;
 
-    virtual string read_text_file(const char* path) const;
-    virtual bool read_text_file(const char* path, string& out_contents) const;
-    virtual vector<std::uint8_t> read_binary_file(const char* path) const;
+    virtual std::string read_text_file(const char* path) const;
+    virtual bool read_text_file(const char* path, std::string& out_contents) const;
+    virtual std::vector<std::uint8_t> read_binary_file(const char* path) const;
     virtual bool read_binary_file(const char* path, std::span<std::uint8_t> out_buffer) const;
     virtual bool write_text_file(const char* path, std::string_view contents);
     virtual bool write_binary_file(const char* path, std::span<const std::uint8_t> buffer);
@@ -99,6 +98,8 @@ public:
             return true;
         }
     };
+
+    constexpr static std::size_t max_path_length{ 256 };
 
 private:
     static bool driver_initialized;

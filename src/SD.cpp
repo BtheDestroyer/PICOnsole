@@ -67,22 +67,14 @@ static void spi_dma_isr() { spi_irq_handler(&spis[0]); }
 
 bool SDCard::driver_initialized{ false };
 
-SDCard::~SDCard()
-{
-    if (is_valid())
-    {
-        f_unmount("0:");
-    }
-}
-
-SDCard::SDCard()
+bool SDCard::init()
 {
     if (!driver_initialized)
     {
         if (!sd_init_driver())
         {
             print("SDCard failed to init SD card driver\n");
-            return;
+            return false;
         }
         driver_initialized = true;
     }
@@ -91,7 +83,16 @@ SDCard::SDCard()
     if (mount_result != FR_OK)
     {
         print("SDCard failed to mount file_system. Err: %d\n", mount_result);
-        return;
+        return false;
+    }
+    return true;
+}
+
+SDCard::~SDCard()
+{
+    if (is_valid())
+    {
+        f_unmount("0:");
     }
 }
 
@@ -111,14 +112,14 @@ FSIZE_t SDCard::get_file_size(const char* path) const
     return get_file_info(path).fsize;
 }
 
-string SDCard::read_text_file(const char* path) const
+std::string SDCard::read_text_file(const char* path) const
 {
-    string contents;
+    std::string contents;
     read_text_file(path, contents);
     return contents;
 }
 
-bool SDCard::read_text_file(const char* path, string& out_contents) const
+bool SDCard::read_text_file(const char* path, std::string& out_contents) const
 {
     FIL file_handle;
     const FRESULT open_result{ f_open(&file_handle, path, FA_READ) };
@@ -158,10 +159,10 @@ bool SDCard::read_text_file(const char* path, string& out_contents) const
     return true;
 }
 
-vector<std::uint8_t> SDCard::read_binary_file(const char* path) const
+std::vector<std::uint8_t> SDCard::read_binary_file(const char* path) const
 {
     const FSIZE_t file_size{ get_file_size(path) };
-    vector<std::uint8_t> contents(file_size);
+    std::vector<std::uint8_t> contents(file_size);
     read_binary_file(path, {contents.begin(), contents.end()});
     return contents;
 }

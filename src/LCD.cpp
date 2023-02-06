@@ -3,13 +3,23 @@
 #include "pico/time.h"
 #include "pico/binary_info.h"
 #include "hardware/dma.h"
+#include "debug.h"
 #include <stdlib.h>
+
+#undef __debug_noinline
+#if _DEBUG
+#define __debug_noinline __noinline
+#else
+#define __debug_noinline
+#endif
+
+__attribute__((section(".piconsole.lcd_buffer"))) LCD_MODEL::buffer_type piconsole_lcd_buffer;
 
 spi_inst_t *SPILCD::get_spi() { return LCD_SPI; }
 
-SPILCD::SPILCD()
-    : backlight_config{pwm_get_default_config()}
+bool SPILCD::init()
 {
+    backlight_config = pwm_get_default_config();
     baudrate = spi_init(get_spi(), 62'500'000u);
     bi_decl(bi_2pins_with_func(LCD_MOSI, LCD_SCK, GPIO_FUNC_SPI));
     gpio_set_function(LCD_SCK, GPIO_FUNC_SPI);
@@ -30,6 +40,7 @@ SPILCD::SPILCD()
     gpio_init(LCD_DC);
     gpio_set_dir(LCD_DC, GPIO_OUT);
     reset();
+    return true;
 }
 
 SPILCD::~SPILCD()
@@ -42,7 +53,7 @@ SPILCD::~SPILCD()
     return get_bytes_per_pixel() * 8;
 }
 
-void SPILCD::write_data(std::uint8_t byte)
+void __debug_noinline SPILCD::write_data(std::uint8_t byte)
 {
     gpio_put(LCD_DC, 1);
     gpio_put(LCD_CS, LCD_CS_ACTIVE_POLARITY);
@@ -50,7 +61,7 @@ void SPILCD::write_data(std::uint8_t byte)
     gpio_put(LCD_CS, !LCD_CS_ACTIVE_POLARITY);
 }
 
-void SPILCD::write_data(std::span<const std::uint8_t> bytes)
+void __debug_noinline SPILCD::write_data(std::span<const std::uint8_t> bytes)
 {
     gpio_put(LCD_DC, 1);
     gpio_put(LCD_CS, LCD_CS_ACTIVE_POLARITY);
@@ -58,7 +69,7 @@ void SPILCD::write_data(std::span<const std::uint8_t> bytes)
     gpio_put(LCD_CS, !LCD_CS_ACTIVE_POLARITY);
 }
 
-void SPILCD::write_command(std::uint8_t byte)
+void __debug_noinline SPILCD::write_command(std::uint8_t byte)
 {
     gpio_put(LCD_DC, 0);
     gpio_put(LCD_CS, LCD_CS_ACTIVE_POLARITY);
@@ -66,7 +77,7 @@ void SPILCD::write_command(std::uint8_t byte)
     gpio_put(LCD_CS, !LCD_CS_ACTIVE_POLARITY);
 }
 
-void SPILCD::write_command(std::span<const std::uint8_t> bytes)
+void __debug_noinline SPILCD::write_command(std::span<const std::uint8_t> bytes)
 {
     gpio_put(LCD_DC, 0);
     gpio_put(LCD_CS, LCD_CS_ACTIVE_POLARITY);
@@ -92,8 +103,12 @@ void SPILCD::set_backlight_strength(float strength)
     pwm_set_gpio_level(LCD_BACKLIGHT, level);
 }
 
-PicoLCD_1_8::PicoLCD_1_8()
+bool PicoLCD_1_8::init()
 {
+    if (!SPILCD::init())
+    {
+        return false;
+    }
     //MX, MY, RGB mode (???)
     write_command(0x36);
     // Horizontal mode
@@ -121,6 +136,7 @@ PicoLCD_1_8::PicoLCD_1_8()
     write_data(0x07);
 
     // ST7735R Power Sequence (???)
+
     write_command(0xC0);
     write_data({0xA2, 0x02, 0x84});
     // ???
@@ -168,6 +184,7 @@ PicoLCD_1_8::PicoLCD_1_8()
     dma_channel = dma_claim_unused_channel(true);
     fill(color::black<ColorFormat>());
     show();
+    return true;
 }
 
 PicoLCD_1_8::~PicoLCD_1_8()
@@ -190,17 +207,21 @@ void PicoLCD_1_8::show()
     write_command(0x2C);
     
     dma_channel_wait_for_finish_blocking(dma_channel);
+    buffer_type &buf{ get_buffer() };
     write_data(std::span<std::uint8_t>{
-        reinterpret_cast<std::uint8_t*>(buffer.data()),
-        buffer.size() * get_bytes_per_pixel()
+        reinterpret_cast<std::uint8_t*>(buf.data()),
+        get_buffer().size() * get_bytes_per_pixel()
         });
 }
 
+static PicoLCD_1_8::ColorFormat PicoLCD_1_8_fill_source_color{};
 void PicoLCD_1_8::fill(ColorFormat color)
 {
-    dma_channel_abort(dma_channel); // We don't care about the last transfer when filling the whole screen
-    static ColorFormat source_color{};
-    source_color = color;
+    if (dma_channel_is_busy(dma_channel))
+    {
+        dma_channel_abort(dma_channel); // We don't care about the last transfer when filling the whole screen
+    }
+    PicoLCD_1_8_fill_source_color = color;
     dma_channel_config config{ dma_channel_get_default_config(dma_channel) };
     channel_config_set_transfer_data_size(&config, DMA_SIZE_16);
     channel_config_set_read_increment(&config, false);
@@ -208,11 +229,12 @@ void PicoLCD_1_8::fill(ColorFormat color)
     dma_channel_configure(
         dma_channel,
         &config,
-        buffer.data(),
-        &source_color.data,
-        buffer.size(),
+        get_buffer().data(),
+        &PicoLCD_1_8_fill_source_color.data,
+        get_buffer().size(),
         true
     );
+    dma_channel_wait_for_finish_blocking(dma_channel);
 }
 
 void PicoLCD_1_8::line_horizontal(ColorFormat color, std::size_t x, std::size_t y, std::size_t width)
@@ -228,7 +250,7 @@ void PicoLCD_1_8::line_horizontal(ColorFormat color, std::size_t x, std::size_t 
     dma_channel_configure(
         dma_channel,
         &config,
-        buffer.data() + start_offset,
+        get_buffer().data() + start_offset,
         &source_color.data,
         width,
         true
