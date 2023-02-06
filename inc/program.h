@@ -7,7 +7,9 @@
 #define piconsole_program_update __attribute__((section(".piconsole.program.update"))) piconsole_program_update
 
 constexpr std::size_t piconsole_program_flash_start{ 0x10080000 };
+constexpr std::size_t piconsole_program_flash_end{ 0x10200000 };
 constexpr std::size_t piconsole_program_ram_start{ 0x20010000 };
+constexpr std::size_t piconsole_program_ram_end{ 0x20040000 };
 
 struct ELFHeader
 {

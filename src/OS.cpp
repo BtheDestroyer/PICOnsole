@@ -120,6 +120,17 @@ bool __no_inline_not_in_flash_func(OS::load_program)(std::string_view path)
     {
         SegmentHeader segment_header;
         FSIZE_t current_segment_header_offset{ elf_header.segment_header_offset };
+        struct DeferredCopy
+        {
+            FSIZE_t file_offset;
+            std::size_t segment_size;
+            std::size_t memory_size;
+            std::size_t virtual_address;
+            std::size_t physical_address;
+            bool copy_to_physical;
+            bool copy_to_virtual;
+        };
+        std::vector<DeferredCopy> deferred_copies;
         for (std::size_t i{ 0 }; i < elf_header.segment_header_count; ++i)
         {
             if (!reader.read<SegmentHeader>(segment_header))
@@ -151,10 +162,55 @@ bool __no_inline_not_in_flash_func(OS::load_program)(std::string_view path)
                 segment_header.flags, segment_header.alignment, next_segment_header_offset);
             
             reader.seek_absolute(segment_header.content_offset);
-            // TODO: Load segment
+            // Temporarily borrowing program RAM; whatever was there won't matter anymore anyway
+            // TODO: Chunk this in case the size is > 192KB
+            if (segment_header.virtual_address == segment_header.physical_address)
+            {
+                if (segment_header.virtual_address >= piconsole_program_flash_start
+                    && segment_header.virtual_address < piconsole_program_flash_end)
+                {
+                    // Copy directly to flash
+                    std::span<std::uint8_t> segment_data{reinterpret_cast<std::uint8_t*>(piconsole_program_ram_start), segment_header.segment_size};
+                    reader.read_bytes(segment_data);
+                    // See flash programming example
+                }
+                else if (segment_header.virtual_address >= piconsole_program_ram_start
+                    && segment_header.virtual_address < piconsole_program_ram_end)
+                {
+                    // Defer segment copy into ram to the end
+                    deferred_copies.push_back(DeferredCopy{
+                        segment_header.content_offset,
+                        segment_header.segment_size, segment_header.memory_size,
+                        segment_header.virtual_address, segment_header.physical_address,
+                        true, false
+                        });
+                }
+            }
+            else
+            {
+                // Currently unsure what to do here
+                // Maybe look at how the Pico bootloader handles it?
+                    deferred_copies.emplace_back(DeferredCopy{
+                        segment_header.content_offset,
+                        segment_header.segment_size, segment_header.memory_size,
+                        segment_header.virtual_address, segment_header.physical_address,
+                        true, false
+                        });
+            }
+            
             reader.seek_absolute(next_segment_header_offset);
             current_segment_header_offset = next_segment_header_offset;
         }
+        for (const DeferredCopy& copy : deferred_copies)
+        {
+            // Copy directly to RAM
+            std::span<std::uint8_t> segment_data{reinterpret_cast<std::uint8_t*>(copy.physical_address), segment_header.segment_size};
+            reader.read_bytes(segment_data);
+        }
     }
+    print("Calling ELF entrypoint!\n");
+    void (*entrypoint)(void) = reinterpret_cast<void (*)(void)>(elf_header.entrypoint);
+    entrypoint();
+    
     return true;
 }
