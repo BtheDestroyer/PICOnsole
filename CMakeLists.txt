@@ -34,6 +34,7 @@ target_compile_definitions(piconsole_os
     
     PRIVATE
         _DEBUG=1
+        _PICONSOLE_OS=1
 
         LCD_SPI=spi1
         

@@ -1,6 +1,11 @@
 #pragma once
 #include <cstdint>
 
+#undef piconsole_program_init
+#define piconsole_program_init __attribute__((section(".piconsole.program.init"))) piconsole_program_init
+#undef piconsole_program_update
+#define piconsole_program_update __attribute__((section(".piconsole.program.update"))) piconsole_program_update
+
 struct ELFHeader
 {
     struct Identifier

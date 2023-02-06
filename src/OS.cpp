@@ -3,6 +3,7 @@
 #include "LCD.h"
 #include "SD.h"
 #include "debug.h"
+#include "program.h"
 
 static __attribute__((section(".piconsole.os"))) OS os;
 
@@ -65,4 +66,43 @@ void OS::update()
     gpio_put(LED_PIN, 1);
     print("Hello, OS!\n");
     sleep_ms(1000);
+}
+
+void OS::load_program(std::string_view path)
+{
+    if (path.size() > SDCard::max_path_length)
+    {
+        print("Error: Can't load path (length %u > %u)", path.size(), SDCard::max_path_length);
+        // Path printed manually to avoid allocations
+        for (const char& character : path)
+        {
+            print("%c", character);
+        }
+        print("\n");
+        return;
+    }
+    std::memcpy(current_program_directory, path.data(), path.size());
+    current_program_directory[path.size()] = '\0';
+    SDCard::FileReader reader(current_program_directory);
+    ELFHeader header;
+    reader.read<ELFHeader>(&header);
+    print("Magic Number: %c%c%c%c\n",
+        header.identifier.magic_number[0],
+        header.identifier.magic_number[1],
+        header.identifier.magic_number[2],
+        header.identifier.magic_number[3]);
+    switch (header.identifier.bitcount)
+    {
+        case ELFHeader::Identifier::BitCount::_32Bit:
+            print("Bit count: 32\n");
+            break;
+        case ELFHeader::Identifier::BitCount::_64Bit:
+            print("Bit count: 64\n");
+            break;
+        default:
+            print("Bit count: ???\n");
+            break;
+    }
+    print("Program/Segment header offset: 0x%x\n", header.program_header_offset);
+    print("Section header offset: 0x%x\n", header.section_header_offset);
 }

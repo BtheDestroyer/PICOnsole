@@ -8,8 +8,14 @@
 
 extern "C"
 {
+#ifdef _PICONSOLE_OS
     extern std::uint8_t __piconsole_lcd_buffer[];
     extern void *__piconsole_lcd_buffer_end[];
+#elif _PICONSOLE_PROGRAM
+    // TODO: Find a way to link these in from the OS's ELF?
+    // std::uint8_t *__piconsole_lcd_buffer { reinterpret_cast<std::uint8_t*>(0x20000498ull) };
+    // void **__piconsole_lcd_buffer_end { (void**)(void*)0x2000a498 };
+#endif
 }
 
 inline constexpr std::uint8_t operator ""_b(unsigned long long v)
@@ -136,7 +142,11 @@ public:
     }
 
 protected:
-    static inline buffer_type &get_buffer() { return *reinterpret_cast<buffer_type*>(__piconsole_lcd_buffer); };
+    #ifdef _PICONSOLE_OS
+    static inline buffer_type &get_buffer() { return *reinterpret_cast<buffer_type*>(__piconsole_lcd_buffer); }
+    #else
+    static buffer_type &get_buffer();
+    #endif
 };
 
 class PicoLCD_1_8 : public ColorLCD<RGB565, 160, 128>

@@ -43,7 +43,7 @@ public:
                 return;
             }
         }
-        bool is_valid() { return last_result != FR_OK; }
+        bool is_valid() { return last_result == FR_OK; }
     
     protected:
         FIL file_handle;

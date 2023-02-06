@@ -131,7 +131,7 @@ SECTIONS
         *(.ram_vector_table)
     } > RAM
 
-    .piconsole (COPY): {
+    .piconsole_ram (COPY): {
         . = ORIGIN(RAM) + 0x100;
         /* PICOnsole OS */
         __piconsole_os = .;

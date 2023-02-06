@@ -4,9 +4,16 @@
 extern "C" {
 #endif
 
-void init_program(OS* os)
+void piconsole_program_init()
 {
     puts("Good job :D");
+    OS::get().get_lcd().fill(color::cyan<RGB565>());
+}
+
+void piconsole_program_update()
+{
+    puts("We updating!");
+    OS::get().get_lcd().fill(color::green<RGB565>());
 }
 
 #ifdef __cplusplus

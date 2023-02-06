@@ -88,6 +88,15 @@ SECTIONS
         . = ALIGN(4);
     } > FLASH
 
+    .piconsole_program_init : {
+        KEEP (*(.piconsole.program.init*))
+        . = ALIGN(4);
+    } > FLASH
+    .piconsole_program_update : {
+        KEEP (*(.piconsole.program.update*))
+        . = ALIGN(4);
+    } > FLASH
+
     .rodata : {
         *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .rodata*)
         . = ALIGN(4);

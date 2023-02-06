@@ -39,6 +39,8 @@ int main() {
         print("%s", file_contents.c_str());
     }
 
+    os.load_program("/programs/piconsole_example_program.elf");
+
     while(os.is_active())
     {
         os.update();
