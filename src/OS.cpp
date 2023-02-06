@@ -12,13 +12,13 @@ constexpr uint LED_PIN{ 25u };
 OS::OS()
 {
     stdio_init_all();
-    print("OS address: %x\n", this);
-    print("__piconsole_os: %x\n", __piconsole_os);
-    print("__piconsole_os_end: %x\n", __piconsole_os_end);
+    print("OS address: 0x%x\n", this);
+    print("__piconsole_os: 0x%x\n", __piconsole_os);
+    print("__piconsole_os_end: 0x%x\n", __piconsole_os_end);
     print("sizeof(OS): %d\n", sizeof(OS));
     print("Initializing LCD interface (%d bytes)...\n", sizeof(LCD_MODEL));
-    print("__piconsole_lcd_buffer: %x\n", __piconsole_lcd_buffer);
-    print("__piconsole_lcd_buffer_end: %x\n", __piconsole_lcd_buffer_end);
+    print("__piconsole_lcd_buffer: 0x%x\n", __piconsole_lcd_buffer);
+    print("__piconsole_lcd_buffer_end: 0x%x\n", __piconsole_lcd_buffer_end);
     if (!lcd.init())
     {
         print("Failed to create LCD interface!\n");
@@ -68,7 +68,7 @@ void OS::update()
     sleep_ms(1000);
 }
 
-void OS::load_program(std::string_view path)
+bool __no_inline_not_in_flash_func(OS::load_program)(std::string_view path)
 {
     if (path.size() > SDCard::max_path_length)
     {
@@ -79,19 +79,28 @@ void OS::load_program(std::string_view path)
             print("%c", character);
         }
         print("\n");
-        return;
+        return false;
     }
-    std::memcpy(current_program_directory, path.data(), path.size());
-    current_program_directory[path.size()] = '\0';
-    SDCard::FileReader reader(current_program_directory);
-    ELFHeader header;
-    reader.read<ELFHeader>(&header);
+    std::memset(current_program_path, 0, count_of(current_program_path));
+    std::memcpy(current_program_path, path.data(), path.size());
+    SDCard::FileReader reader(current_program_path);
+    ELFHeader elf_header;
+    reader.read<ELFHeader>(elf_header);
     print("Magic Number: %c%c%c%c\n",
-        header.identifier.magic_number[0],
-        header.identifier.magic_number[1],
-        header.identifier.magic_number[2],
-        header.identifier.magic_number[3]);
-    switch (header.identifier.bitcount)
+        elf_header.identifier.magic_number[0],
+        elf_header.identifier.magic_number[1],
+        elf_header.identifier.magic_number[2],
+        elf_header.identifier.magic_number[3]);
+    for (std::size_t i{ 0 }; i < count_of(elf_header.identifier.magic_number); ++i)
+    {
+        if (elf_header.identifier.magic_number[i] != ELFHeader::Identifier::expected_magic_number[i])
+        {
+            print("Path provided to OS::load_program is not a valid ELF (magic number mismatch): %s\n", current_program_path);
+            std::memset(current_program_path, 0, count_of(current_program_path));
+            return false;
+        }
+    }
+    switch (elf_header.identifier.bitcount)
     {
         case ELFHeader::Identifier::BitCount::_32Bit:
             print("Bit count: 32\n");
@@ -103,6 +112,49 @@ void OS::load_program(std::string_view path)
             print("Bit count: ???\n");
             break;
     }
-    print("Program/Segment header offset: 0x%x\n", header.program_header_offset);
-    print("Section header offset: 0x%x\n", header.section_header_offset);
+    print("Program/Segment elf_header offset: 0x%x\n", elf_header.segment_header_offset);
+    print("Entrypoint: 0x%x\n", elf_header.entrypoint);
+    reader.seek_absolute(elf_header.segment_header_offset);
+    print("Loading %d segments...\n", elf_header.segment_header_count);
+    print("             idx: Type Offset     VirtAddr   PhysAddr   FileSize MemSize Flags (Raw)    Alignment\n");
+    {
+        SegmentHeader segment_header;
+        FSIZE_t current_segment_header_offset{ elf_header.segment_header_offset };
+        for (std::size_t i{ 0 }; i < elf_header.segment_header_count; ++i)
+        {
+            if (!reader.read<SegmentHeader>(segment_header))
+            {
+                print("Failed to read segment header %d!\n", i);
+                std::memset(current_program_path, 0, count_of(current_program_path));
+                return false;
+            }
+            constexpr static auto has_flag{
+                [](SegmentHeader::Flags flags, SegmentHeader::Flags mask)
+                {
+                    const std::uint32_t masked{ static_cast<std::uint32_t>(flags) & static_cast<std::uint32_t>(mask) };
+                    return masked == static_cast<std::uint32_t>(mask);
+                }
+            };
+            const FSIZE_t next_segment_header_offset{ current_segment_header_offset + sizeof(SegmentHeader) };
+            print("(%10llu)", current_segment_header_offset);
+            print(" %3d:", i);
+            print(" %.5d", segment_header.type);
+            print(" 0x%08x 0x%08x 0x%08x",
+                segment_header.content_offset, segment_header.virtual_address, segment_header.physical_address);
+            print(" 0x%05x  0x%05x",
+                segment_header.segment_size, segment_header.memory_size);
+            print(" %c%c%c",
+                has_flag(segment_header.flags, SegmentHeader::Flags::R) ? 'R' : ' ',
+                has_flag(segment_header.flags, SegmentHeader::Flags::W) ? 'W' : ' ',
+                has_flag(segment_header.flags, SegmentHeader::Flags::X) ? 'X' : ' ');
+            print("    (0x%04x) 0x%04x -> %llu\n",
+                segment_header.flags, segment_header.alignment, next_segment_header_offset);
+            
+            reader.seek_absolute(segment_header.content_offset);
+            // TODO: Load segment
+            reader.seek_absolute(next_segment_header_offset);
+            current_segment_header_offset = next_segment_header_offset;
+        }
+    }
+    return true;
 }

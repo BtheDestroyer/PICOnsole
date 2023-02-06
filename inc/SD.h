@@ -44,10 +44,34 @@ public:
             }
         }
         bool is_valid() { return last_result == FR_OK; }
+
+        void seek_relative(std::int64_t offset)
+        {
+            if (offset == 0)
+            {
+                return;
+            }
+            else if (offset > 0)
+            {
+                seek_absolute(file_handle.fptr + static_cast<std::uint64_t>(offset));
+                return;
+            }
+            // else/offset < 0
+            seek_absolute(file_handle.fptr - static_cast<std::uint64_t>(std::abs(offset)));
+        }
+
+        void seek_absolute(FSIZE_t offset)
+        {
+            f_lseek(&file_handle, offset);
+            current_offset = offset;
+        }
+
+        constexpr FSIZE_t get_current_offset() const { return current_offset; }
     
     protected:
         FIL file_handle;
         FRESULT last_result;
+        FSIZE_t current_offset{ 0 };
     };
 
     class FileReader : public FileInterface
@@ -65,21 +89,34 @@ public:
         }
 
         template<typename TData>
-        bool read(TData* out_object)
+        bool read(TData& out_object)
         {
             if (!is_valid())
             {
                 return false;
             }
             constexpr static std::size_t object_size{ sizeof(TData) };
-            std::uint8_t buffer[object_size];
+            std::array<std::uint8_t, object_size> buffer;
+            if (!read_bytes(buffer))
+            {
+                print("FileReader failed to read_bytes for object\n");
+                return false;
+            }
+            std::memcpy(&out_object, buffer.data(), buffer.size());
+            return true;
+        }
+
+        bool read_bytes(std::span<std::uint8_t> memory)
+        {
+            const std::size_t total_size{ memory.size() };
             FSIZE_t read_bytes{ 0 };
-            while (object_size > read_bytes)
+            while (total_size > read_bytes)
             {
                 constexpr static unsigned int max_chunk_size{ std::numeric_limits<unsigned int>::max() };
-                const FSIZE_t remaining_bytes{ object_size - read_bytes };
+                const FSIZE_t remaining_bytes{ total_size - read_bytes };
                 unsigned int chunk_size{ remaining_bytes > max_chunk_size ? max_chunk_size : static_cast<unsigned int>(remaining_bytes) };
-                const FRESULT read_result{ f_read(&file_handle, buffer + read_bytes, chunk_size, &chunk_size) };
+                const FRESULT read_result{ f_read(&file_handle, memory.data() + read_bytes, chunk_size, &chunk_size) };
+                current_offset += chunk_size;
                 if (read_result != FR_OK)
                 {
                     last_result = read_result;
@@ -94,7 +131,6 @@ public:
                 }
                 read_bytes += chunk_size;
             }
-            std::memcpy(out_object, buffer, object_size);
             return true;
         }
     };

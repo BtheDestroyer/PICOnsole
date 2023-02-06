@@ -2,6 +2,7 @@
 #include "memory.h"
 #include <string_view>
 #include <utility>
+#include <string>
 
 class path
 {
@@ -24,7 +25,7 @@ public:
 
     static std::string join(const std::string_view a, const std::string_view b)
     {
-        std::string path{a};
+        std::string path{ a };
         if (!a.ends_with('/'))
         {
             path += '/';
