@@ -1,15 +1,25 @@
 #pragma once
 #include <cstdint>
+#include "hardware/flash.h"
+#include "hardware/regs/addressmap.h"
+
+typedef bool program_init_fn(void);
+typedef void program_update_fn(void);
 
 #undef piconsole_program_init
-#define piconsole_program_init __attribute__((section(".piconsole.program.init"))) piconsole_program_init
+#define piconsole_program_init int __attribute__((section(".piconsole.program.init"))) main(void)
 #undef piconsole_program_update
-#define piconsole_program_update __attribute__((section(".piconsole.program.update"))) piconsole_program_update
+#define piconsole_program_update void __attribute__((section(".piconsole.program.update"))) _piconsole_program_update(void)
 
-constexpr std::size_t piconsole_program_flash_start{ 0x10080000 };
-constexpr std::size_t piconsole_program_flash_end{ 0x10200000 };
-constexpr std::size_t piconsole_program_ram_start{ 0x20010000 };
-constexpr std::size_t piconsole_program_ram_end{ 0x20040000 };
+constexpr std::size_t piconsole_program_flash_offset{ 0x00080000 };
+constexpr std::size_t piconsole_program_flash_start{ XIP_BASE + piconsole_program_flash_offset };
+constexpr std::size_t piconsole_program_flash_end{ XIP_BASE + 0x00200000 };
+constexpr std::size_t piconsole_program_flash_size{ piconsole_program_flash_end - piconsole_program_flash_start };
+static_assert(piconsole_program_flash_size % FLASH_SECTOR_SIZE == 0);
+constexpr std::size_t piconsole_program_ram_offset{ 0x00010000 };
+constexpr std::size_t piconsole_program_ram_start{ SRAM_BASE + piconsole_program_ram_offset };
+constexpr std::size_t piconsole_program_ram_end{ SRAM_BASE + 0x0003E000 };
+constexpr std::size_t piconsole_program_ram_size{ piconsole_program_ram_end - piconsole_program_ram_start - 1 };
 
 struct ELFHeader
 {
@@ -86,5 +96,117 @@ struct SegmentHeader
         WX = W | X,
         RWX = R | W | X
     } flags; // TODO: Enum this
-    std::uint32_t alignment; // Should always be 4
+    std::uint32_t alignment;
+};
+
+struct SectionHeader
+{
+    std::uint32_t string_table_name_index;
+    enum class Type : std::uint32_t
+    {
+        Null = 0,
+        ProgramData = 1,
+        SymbolTable = 2,
+        StringTable = 3,
+        Relative = 4,
+        HashTable = 5,
+        Dynamic = 6,
+        Note = 7,
+        NoBits = 8,
+        Relocation = 9,
+        SharedLibrary = 10,
+        DynamicSymbols = 11
+    } type;
+    enum class Flags : std::uint32_t
+    {
+        None = 0b000,
+        Write = 0b001,
+        Allocate = 0b010,
+        ExecuteInstruction = 0b100,
+    }flags;
+    std::size_t address;
+    std::size_t offset;
+    std::uint32_t size;
+    std::uint32_t linked_section_index;
+    std::uint32_t info;
+    std::uint32_t address_alignment;
+    std::uint32_t entry_size;
+};
+static_assert(sizeof(SectionHeader) == 40);
+
+struct SymbolTableEntry
+{
+    std::uint32_t string_table_name_index;
+    std::size_t address;
+    std::uint32_t size;
+    std::uint8_t info;
+    std::uint8_t other;
+    std::uint8_t shndx; //?
+};
+
+class StringTable
+{
+public:
+    StringTable(std::size_t byte_count)
+        : data{static_cast<char*>(malloc(byte_count)), byte_count}, owns_data{ true }
+    {}
+    StringTable(std::span<char> memory)
+        : data(memory), owns_data{false}
+    {}
+    ~StringTable()
+    {
+        if (owns_data)
+        {
+            free(data.data());
+        }
+    }
+
+    class Entry
+    {
+    public:
+        constexpr Entry(const char* string) : string{ string } {}
+
+        [[nodiscard]] constexpr inline operator const char*()const
+        {
+            return string;
+        }
+
+        [[nodiscard]] constexpr inline const char* const& operator *() const
+        {
+            return string;
+        }
+
+        constexpr inline Entry& operator ++()
+        {
+            while (*string != '\0')
+            {
+                ++string;
+            }
+            ++string;
+            return *this;
+        }
+    
+    private:
+        const char* string;
+    };
+
+    [[nodiscard]] std::span<char> get_data() { return data; }
+    [[nodiscard]] std::span<const char> get_cdata() const { return data; }
+    [[nodiscard]] std::span<const char> get_data() const { return get_cdata(); }
+
+    [[nodiscard]] Entry front() { return Entry{ data.data() }; }
+    [[nodiscard]] Entry operator[](std::size_t index)
+    {
+        Entry entry{ front() };
+        while (index > 0)
+        {
+            ++entry;
+            --index;
+        }
+        return entry;
+    }
+
+private:
+    std::span<char> data;
+    bool owns_data;
 };

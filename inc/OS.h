@@ -6,6 +6,8 @@
 #include <string_view>
 #include <functional>
 
+#define assume(x) do { if (!(x)) { __builtin_unreachable(); } } while (0)
+
 class OS;
 
 extern "C"

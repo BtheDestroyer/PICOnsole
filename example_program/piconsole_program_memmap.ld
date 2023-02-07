@@ -25,9 +25,9 @@
 MEMORY
 {
     FLASH(rx) : ORIGIN = 0x10080000, LENGTH = 1536k
-    RAM(rwx) : ORIGIN =  0x20010000, LENGTH = 192k
-    SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 2k
-    SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 2k
+    RAM(rwx) : ORIGIN =  0x20014000, LENGTH = 176k
+    SCRATCH_X(rwx) : ORIGIN = 0x20040800, LENGTH = 2k
+    SCRATCH_Y(rwx) : ORIGIN = 0x20041800, LENGTH = 2k
 }
 
 ENTRY(_entry_point)
@@ -88,14 +88,16 @@ SECTIONS
         . = ALIGN(4);
     } > FLASH
 
+    . = ALIGN(4);
     .piconsole_program_init : {
-        KEEP (*(.piconsole.program.init*))
-        . = ALIGN(4);
+        KEEP (*(.piconsole.program.init))
     } > FLASH
+    
+    . = ALIGN(4);
     .piconsole_program_update : {
-        KEEP (*(.piconsole.program.update*))
-        . = ALIGN(4);
+        KEEP (*(.piconsole.program.update))
     } > FLASH
+    . = ALIGN(4);
 
     .rodata : {
         *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .rodata*)

@@ -6,6 +6,7 @@ project(piconsole_os C CXX ASM)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
+set(PICO_DEOPTIMIZED_DEBUG On)
 
 pico_sdk_init()
 
@@ -54,6 +55,7 @@ target_compile_definitions(piconsole_os
         SD_MISO=4
     )
 #target_compile_options(piconsole_os PUBLIC -Ofast)
+target_compile_options(piconsole_os PRIVATE -Og)
 
 pico_enable_stdio_usb(piconsole_os 0)
 pico_enable_stdio_uart(piconsole_os 1)
@@ -62,5 +64,7 @@ pico_add_extra_outputs(piconsole_os)
 
 set_target_properties(piconsole_os PROPERTIES PICO_TARGET_LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/piconsole_os_memmap.ld)
 
-target_link_libraries(piconsole_os pico_stdlib hardware_pwm hardware_spi hardware_dma FatFs_SPI)
+target_compile_options(piconsole_os PUBLIC -Wno-psabi)
+target_link_options(piconsole_os PUBLIC -Xlinker --print-memory-usage)
 
+target_link_libraries(piconsole_os pico_stdlib hardware_pwm hardware_spi hardware_dma hardware_flash FatFs_SPI)

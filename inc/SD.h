@@ -9,6 +9,9 @@
 #include "ff.h"
 #include "debug.h"
 
+template <typename T>
+concept byte_type = sizeof(T) == 1;
+
 class SDCard
 {
 public:
@@ -97,7 +100,7 @@ public:
             }
             constexpr static std::size_t object_size{ sizeof(TData) };
             std::array<std::uint8_t, object_size> buffer;
-            if (!read_bytes(buffer))
+            if (!read_bytes(std::span{ buffer.data(), object_size }))
             {
                 print("FileReader failed to read_bytes for object\n");
                 return false;
@@ -106,7 +109,8 @@ public:
             return true;
         }
 
-        bool read_bytes(std::span<std::uint8_t> memory)
+        template <byte_type TByte>
+        bool __noinline read_bytes(std::span<TByte> memory)
         {
             const std::size_t total_size{ memory.size() };
             FSIZE_t read_bytes{ 0 };
@@ -114,8 +118,13 @@ public:
             {
                 constexpr static unsigned int max_chunk_size{ std::numeric_limits<unsigned int>::max() };
                 const FSIZE_t remaining_bytes{ total_size - read_bytes };
-                unsigned int chunk_size{ remaining_bytes > max_chunk_size ? max_chunk_size : static_cast<unsigned int>(remaining_bytes) };
-                const FRESULT read_result{ f_read(&file_handle, memory.data() + read_bytes, chunk_size, &chunk_size) };
+                const unsigned int chunk_size{ remaining_bytes > max_chunk_size ? max_chunk_size : static_cast<unsigned int>(remaining_bytes) };
+                unsigned int read_count;
+                const FRESULT read_result{ f_read(&file_handle, memory.data() + read_bytes, chunk_size, &read_count) };
+                if (read_count != chunk_size)
+                {
+                    print("FileReader f_read read_count (%u) differs from chunk_size (%u)\n", read_count, chunk_size);
+                }
                 current_offset += chunk_size;
                 if (read_result != FR_OK)
                 {

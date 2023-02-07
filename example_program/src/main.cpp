@@ -4,13 +4,14 @@
 extern "C" {
 #endif
 
-void piconsole_program_init()
+piconsole_program_init
 {
     puts("Good job :D");
     OS::get().get_lcd().fill(color::cyan<RGB565>());
+    return true;
 }
 
-void piconsole_program_update()
+piconsole_program_update
 {
     puts("We updating!");
     OS::get().get_lcd().fill(color::green<RGB565>());
@@ -19,8 +20,3 @@ void piconsole_program_update()
 #ifdef __cplusplus
 }
 #endif
-
-int main()
-{
-    puts("Don't run this directly! Launch it from PICOnsole OS!");
-}

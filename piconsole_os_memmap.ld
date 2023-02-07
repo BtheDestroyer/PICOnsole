@@ -30,10 +30,11 @@
 
 MEMORY
 {
-    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 512k
-    RAM(rwx) : ORIGIN =  0x20000000, LENGTH = 64k
-    SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 2k
-    SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 2k
+    OS_FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 512k
+    PROGRAM_FLASH(rx) : ORIGIN = ORIGIN(OS_FLASH) + LENGTH(OS_FLASH), LENGTH = 1536k
+    RAM(rwx) : ORIGIN =  0x20000000, LENGTH = 80k
+    SCRATCH_X(rwx) : ORIGIN = 0x20040800, LENGTH = 2k
+    SCRATCH_Y(rwx) : ORIGIN = 0x20041800, LENGTH = 2k
 }
 
 ENTRY(_entry_point)
@@ -47,13 +48,13 @@ SECTIONS
 
     .flash_begin : {
         __flash_binary_start = .;
-    } > FLASH
+    } > OS_FLASH
 
     .boot2 : {
         __boot2_start__ = .;
         KEEP (*(.boot2))
         __boot2_end__ = .;
-    } > FLASH
+    } > OS_FLASH
 
     ASSERT(__boot2_end__ - __boot2_start__ == 256,
         "ERROR: Pico second stage bootloader must be 256 bytes in size")
@@ -92,25 +93,25 @@ SECTIONS
 
         *(.eh_frame*)
         . = ALIGN(4);
-    } > FLASH
+    } > OS_FLASH
 
     .rodata : {
         *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .rodata*)
         . = ALIGN(4);
         *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.flashdata*)))
         . = ALIGN(4);
-    } > FLASH
+    } > OS_FLASH
 
     .ARM.extab :
     {
         *(.ARM.extab* .gnu.linkonce.armextab.*)
-    } > FLASH
+    } > OS_FLASH
 
     __exidx_start = .;
     .ARM.exidx :
     {
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-    } > FLASH
+    } > OS_FLASH
     __exidx_end = .;
 
     /* Machine inspectable binary information */
@@ -120,7 +121,7 @@ SECTIONS
     {
         KEEP(*(.binary_info.keep.*))
         *(.binary_info.*)
-    } > FLASH
+    } > OS_FLASH
     __binary_info_end = .;
     . = ALIGN(4);
 
@@ -132,7 +133,7 @@ SECTIONS
     } > RAM
 
     .piconsole_ram (COPY): {
-        . = ORIGIN(RAM) + 0x100;
+        . = ALIGN(0x100);
         /* PICOnsole OS */
         __piconsole_os = .;
         KEEP(*(.piconsole.os*))
@@ -193,7 +194,7 @@ SECTIONS
         . = ALIGN(4);
         /* All data end */
         __data_end__ = .;
-    } > RAM AT> FLASH
+    } > RAM AT> OS_FLASH
 
     .uninitialized_data (COPY): {
         . = ALIGN(4);
@@ -206,7 +207,7 @@ SECTIONS
         *(.scratch_x.*)
         . = ALIGN(4);
         __scratch_x_end__ = .;
-    } > SCRATCH_X AT > FLASH
+    } > SCRATCH_X AT > OS_FLASH
     __scratch_x_source__ = LOADADDR(.scratch_x);
 
     .scratch_y : {
@@ -214,7 +215,7 @@ SECTIONS
         *(.scratch_y.*)
         . = ALIGN(4);
         __scratch_y_end__ = .;
-    } > SCRATCH_Y AT > FLASH
+    } > SCRATCH_Y AT > OS_FLASH
     __scratch_y_source__ = LOADADDR(.scratch_y);
 
     .bss  : {
@@ -254,7 +255,7 @@ SECTIONS
 
     .flash_end : {
         __flash_binary_end = .;
-    } > FLASH
+    } > OS_FLASH
 
     /* stack limit is poorly named, but historically is maximum heap ptr */
     __StackLimit = ORIGIN(RAM) + LENGTH(RAM);
@@ -269,5 +270,6 @@ SECTIONS
 
     ASSERT( __binary_info_header_end - __logical_binary_start <= 256, "Binary info must be in first 256 bytes of the binary")
     /* todo assert on extra code */
+    ASSERT(__flash_binary_end - __flash_binary_start < 512k, "Too much Flash used by OS!")
 }
 

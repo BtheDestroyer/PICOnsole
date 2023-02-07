@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 20)
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include("../pico_sdk_import.cmake")
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+#set(CMAKE_VERBOSE_MAKEFILE ON)
 project(piconsole_example_program C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
@@ -46,6 +46,7 @@ pico_set_program_version(piconsole_example_program "0.1")
 pico_enable_stdio_uart(piconsole_example_program 1)
 pico_enable_stdio_usb(piconsole_example_program 1)
 
+target_compile_options(piconsole_example_program PUBLIC -nostartfiles -nolibc -nostdlib)
 set_target_properties(piconsole_example_program PROPERTIES PICO_TARGET_LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/piconsole_program_memmap.ld)
 
 target_link_libraries(piconsole_example_program pico_stdlib hardware_pwm hardware_spi hardware_dma FatFs_SPI)

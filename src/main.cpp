@@ -27,9 +27,15 @@ static void benchmark(std::function<void()> tested_function, std::size_t count)
     print("Completed in %lluus! Average of %.0fus\n", delta, average);
 }
 
-int main() {
+piconsole_program_init;
+
+int main()
+{
     bi_decl(bi_program_description("Basic OS for the RP2040 intended for launching games\nCreated by Bryce Dixon; https://brycedixon.dev/"));
     
+    print("_piconsole_program_init: 0x%p\n", _piconsole_program_init);
+    _piconsole_program_init();
+
     OS& os{ OS::get() };
 
     print("&os: 0x%x\n", &os);
