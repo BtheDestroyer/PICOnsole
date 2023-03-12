@@ -72,7 +72,12 @@
         "sstream": "cpp",
         "ctime": "cpp",
         "iomanip": "cpp",
-        "cstring": "cpp"
+        "cstring": "cpp",
+        "mutex.h": "c",
+        "assert.h": "c",
+        "pico.h": "c",
+        "time.h": "c",
+        "pheap.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": false
 }

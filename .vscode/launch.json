@@ -20,6 +20,7 @@
             "runToEntryPoint": "main",
             // Work around for stopping at main on restart
             "postRestartCommands": [
+                "break *0x10000100", // Debug _entry_point
                 "break main",
                 "continue"
             ],
