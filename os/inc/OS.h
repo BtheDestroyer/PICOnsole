@@ -48,7 +48,8 @@ public:
     GETTER PICONSOLE_MEMBER_FUNC std::string_view get_current_program_path() { return {current_program_path, std::strlen(current_program_path)}; }
     GETTER PICONSOLE_MEMBER_FUNC std::string_view get_current_program_directory() { return path::dir_name(current_program_path); }
 
-    KEEP bool __no_inline_not_in_flash_func(load_program)(std::string_view path);
+    KEEP virtual bool __no_inline_not_in_flash_func(load_program)(std::string_view path);
+    KEEP PICONSOLE_MEMBER_FUNC bool stop_program();
 
 private:
     PICONSOLE_MEMBER_FUNC void show_color_test();
@@ -57,5 +58,6 @@ private:
     SDCard sd;
 
     char current_program_path[SDCard::max_path_length + 1] { 0 };
+    bool program_running{ false };
     bool initialized{ false };
 };

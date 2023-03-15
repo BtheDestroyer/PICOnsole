@@ -7,6 +7,11 @@ typedef void program_reset_fn(void);
 typedef int program_init_fn(OS&);
 typedef void program_update_fn(OS&);
 
+enum FIFOCodes : std::uint32_t {
+    program_launch_success = 1,
+    os_updated = 2,
+};
+
 class OS;
 
 #undef piconsole_program_init

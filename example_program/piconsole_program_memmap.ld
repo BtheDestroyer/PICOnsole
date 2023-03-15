@@ -61,14 +61,17 @@ SECTIONS
 
     .text : {
         __logical_binary_start = .;
-    } > PROGRAM_FLASH
+    } > FLASH
     .text.vectors : {
         KEEP (*(.vectors))
         KEEP (*(.binary_info_header))
         __binary_info_header_end = .;
-    } > PROGRAM_FLASH
+    } > FLASH
     .text.reset : {
         KEEP (*(.reset))
+    } > FLASH
+    .text.main : {
+        KEEP (*(.piconsole.program.main))
     } > PROGRAM_FLASH
     .text.general : {
         /* TODO revisit this now memset/memcpy/float in ROM */

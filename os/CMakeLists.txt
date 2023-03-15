@@ -66,6 +66,7 @@ target_link_options(piconsole_os_lib PUBLIC -Wl,--print-memory-usage)
 target_link_libraries(piconsole_os_lib
     PUBLIC
         pico_stdlib
+        pico_multicore
         hardware_pwm hardware_spi hardware_dma
         hardware_flash hardware_resets hardware_structs
         cmsis_core

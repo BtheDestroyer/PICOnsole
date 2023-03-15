@@ -12,6 +12,7 @@
 #include "program.h"
 
 #include "RP2040.h"
+#include "pico/multicore.h"
 #include "hardware/structs/dma.h"
 #include "hardware/structs/watchdog.h"
 #include "hardware/resets.h"
@@ -96,11 +97,10 @@ void OS::show_color_test()
 
 void OS::update()
 {
-    gpio_put(LED_PIN, 0);
-    sleep_ms(250);
-    gpio_put(LED_PIN, 1);
+    gpio_put(LED_PIN, !gpio_get(LED_PIN));
     print("Hello, OS!\n");
-    sleep_ms(1000);
+    sleep_ms(250);
+    multicore_fifo_push_timeout_us(FIFOCodes::os_updated, 8'000);
 }
 
 // Taken directly from flash_ssi_dma example
@@ -513,6 +513,7 @@ bool __no_inline_not_in_flash_func(OS::load_program)(std::string_view path)
         dma_channel_unclaim(dma_channel);
     }
 
+#if 0
     print("Uninitializing OS\n");
     uninit();
     print("Calling program's reset vector...\n");
@@ -528,6 +529,34 @@ bool __no_inline_not_in_flash_func(OS::load_program)(std::string_view path)
     :
     );
     // Should never return
-    
+#endif
+    typedef void program_entrypoint_t(void);
+    const program_entrypoint_t* program_entrypoint{ reinterpret_cast<program_entrypoint_t*>(0x10080001) };
+    stop_program();
+    print("Launching program on core1...\n");
+    multicore_launch_core1(program_entrypoint);
+    std::uint32_t launch_result{ ~0u };
+    multicore_fifo_pop_timeout_us(500'000, &launch_result);
+    program_running = launch_result == FIFOCodes::program_launch_success;
+    if (!program_running)
+    {
+        print("Failed to launch program; the program_launch_success constant was not pushed to the fifo.\n");
+    }
+    else
+    {
+        print("Program started successfully!\n");
+    }
+    return program_running;
+}
+
+bool OS::stop_program()
+{
+    if (!program_running)
+    {
+        return false;
+    }
+    print("Stopping current program...\n");
+    multicore_reset_core1();
+    program_running = false;
     return true;
 }

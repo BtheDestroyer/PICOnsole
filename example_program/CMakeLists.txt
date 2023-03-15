@@ -18,6 +18,7 @@ target_compile_options(piconsole_example_program PUBLIC -nostartfiles -O0)
 target_compile_definitions(piconsole_example_program
     PUBLIC
         _DEBUG=1
+        PICO_STDOUT_MUTEX=0
     )
 
 pico_set_program_name(piconsole_example_program "piconsole_example_program")
