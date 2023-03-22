@@ -31,12 +31,6 @@ int __attribute__((section(".piconsole.program.main"))) main()
 {
     multicore_fifo_push_blocking(FIFOCodes::program_launch_success);
     OS& os{ OS::get() };
-    // if (os.is_initialized())
-    // {
-    //     puts("OS already initialized!");
-    //     os.uninit(false);
-    // }
-    // os.init();
     _piconsole_program_init(os);
     while (true)
     {

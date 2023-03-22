@@ -29,6 +29,20 @@ static void benchmark(std::function<void()> tested_function, std::size_t count)
 
 __attribute__((section(".piconsole.os.os"))) OS os;
 
+void audio_demo(AudioBuffer& buffer)
+{
+    static AudioSample i{ 0 };
+    while (!buffer.full())
+    {
+        i += 10;
+        if (i > 1000)
+        {
+            i -= 2000;
+        }
+        buffer.push_back(AudioFrame{ i, i });
+    }
+}
+
 int os_main()
 {
     bi_decl(bi_program_description("Basic OS for the RP2040 intended for launching games\nCreated by Bryce Dixon; https://brycedixon.dev/"));
@@ -36,15 +50,17 @@ int os_main()
     OS& os{ OS::get() };
     os.init();
     puts("OS main()");
-
     print("&os: 0x%x\n", &os);
-
+    
     {
         const std::string file_contents{ os.get_sd().read_text_file("test.txt") };
         print("%s", file_contents.c_str());
     }
 
     os.load_program("/programs/piconsole_example_program.elf");
+
+    //os.get_vibrator().start(1.0f, 500);
+    //os.get_speaker().set_audio_generator(audio_demo);
 
     while(os.is_active())
     {

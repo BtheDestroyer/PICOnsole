@@ -16,10 +16,14 @@ add_library(piconsole_os_lib
     "src/program.cpp"
     "src/PICOnsole.cpp"
     "src/sprite.cpp"
+    "src/Speaker.cpp"
+    "src/Vibrator.cpp"
 )
+pico_generate_pio_header(piconsole_os_lib ${CMAKE_CURRENT_LIST_DIR}/src/i2s.pio)
 target_include_directories(piconsole_os_lib
     PUBLIC
         inc
+        build/os
 )
 target_compile_definitions(piconsole_os_lib
     PUBLIC
@@ -41,12 +45,24 @@ target_compile_definitions(piconsole_os_lib
         LCD_DC=8
         LCD_BACKLIGHT=13
 
-
         SD_CS=5
         SD_CS_ACTIVE_POLARITY=0
         SD_SCK=2
         SD_MOSI=3
         SD_MISO=4
+
+        BUTTON_CATHODE_1=16
+        BUTTON_CATHODE_2=17
+        BUTTON_CATHODE_3=18
+        BUTTON_ANODE_1=19
+        BUTTON_ANODE_2=20
+        BUTTON_ANODE_3=21
+
+        I2S_CLK=14
+        I2S_LRC=15
+        I2S_DATA=22
+
+        VIBRATION_PIN=6
     
     INTERFACE
         _DEBUG=1
@@ -65,10 +81,10 @@ target_link_options(piconsole_os_lib PUBLIC -Wl,--print-memory-usage)
 
 target_link_libraries(piconsole_os_lib
     PUBLIC
-        pico_stdlib
-        pico_multicore
+        pico_stdlib pico_multicore
         hardware_pwm hardware_spi hardware_dma
         hardware_flash hardware_resets hardware_structs
+        hardware_pio
         cmsis_core
         FatFs_SPI)
 

@@ -54,6 +54,25 @@ bool OS::init()
     }
     print("Created SD interface\n");
 
+    if (speaker.is_valid())
+    {
+        print("Initializing Speaker...\n");
+        speaker.init();
+        if (speaker.is_active())
+        {
+            print("Speaker initialized!\n");
+        }
+        else
+        {
+            print("Failed to initialize Speaker!\n");
+            exit(-3);
+        }
+    }
+    else
+    {
+        print("No valid Speaker interface to initialize.\n");
+    }
+
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
     print("OS initialized\n");
@@ -97,6 +116,8 @@ void OS::show_color_test()
 
 void OS::update()
 {
+    vibrator.update();
+    speaker.update();
     gpio_put(LED_PIN, !gpio_get(LED_PIN));
     print("Hello, OS!\n");
     sleep_ms(250);
