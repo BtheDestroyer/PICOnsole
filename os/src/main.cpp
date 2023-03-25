@@ -49,7 +49,7 @@ int os_main()
 
     OS& os{ OS::get() };
     os.init();
-    puts("OS main()");
+    print("OS main()");
     print("&os: 0x%x\n", &os);
     
     {
