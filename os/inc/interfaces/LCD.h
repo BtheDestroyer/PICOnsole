@@ -3,6 +3,7 @@
 #include <concepts>
 #include <cstdint>
 #include <span>
+#include <string_view>
 #include "PICOnsole_defines.h"
 #include "hardware/spi.h"
 #include "hardware/pwm.h"
@@ -25,6 +26,48 @@ inline consteval std::uint8_t operator ""_b(unsigned long long v)
 }
 
 class ColorFormat {};
+
+template <typename T>
+concept colorformat_t = std::derived_from<T, ColorFormat>;
+
+namespace color
+{
+    template <colorformat_t TColorFormat>
+    requires std::derived_from<TColorFormat, ColorFormat>
+    inline constexpr TColorFormat black() { return TColorFormat{static_cast<std::uint8_t>(0x00)}; }
+    template <colorformat_t TColorFormat>
+    requires std::derived_from<TColorFormat, ColorFormat>
+    inline constexpr TColorFormat dark_grey() { return TColorFormat{static_cast<std::uint8_t>(0x44)}; }
+    template <colorformat_t TColorFormat>
+    requires std::derived_from<TColorFormat, ColorFormat>
+    inline constexpr TColorFormat grey() { return TColorFormat{static_cast<std::uint8_t>(0x88)}; }
+    template <colorformat_t TColorFormat>
+    requires std::derived_from<TColorFormat, ColorFormat>
+    inline constexpr TColorFormat light_grey() { return TColorFormat{static_cast<std::uint8_t>(0xCC)}; }
+    template <colorformat_t TColorFormat>
+    requires std::derived_from<TColorFormat, ColorFormat>
+    inline constexpr TColorFormat white() { return TColorFormat{static_cast<std::uint8_t>(0xFF)}; }
+
+    template <colorformat_t TColorFormat>
+    requires std::derived_from<TColorFormat, ColorFormat>
+    inline constexpr TColorFormat red() { return TColorFormat{0xFF, 0x00, 0x00}; }
+    template <colorformat_t TColorFormat>
+    requires std::derived_from<TColorFormat, ColorFormat>
+    inline constexpr TColorFormat green() { return TColorFormat{0x00, 0xFF, 0x00}; }
+    template <colorformat_t TColorFormat>
+    requires std::derived_from<TColorFormat, ColorFormat>
+    inline constexpr TColorFormat blue() { return TColorFormat{0x00, 0x00, 0xFF}; }
+
+    template <colorformat_t TColorFormat>
+    requires std::derived_from<TColorFormat, ColorFormat>
+    inline constexpr TColorFormat yellow() { return TColorFormat{0xFF, 0xFF, 0x00}; }
+    template <colorformat_t TColorFormat>
+    requires std::derived_from<TColorFormat, ColorFormat>
+    inline constexpr TColorFormat cyan() { return TColorFormat{0x00, 0xFF, 0xFF}; }
+    template <colorformat_t TColorFormat>
+    requires std::derived_from<TColorFormat, ColorFormat>
+    inline constexpr TColorFormat magenta() { return TColorFormat{0xFF, 0x00, 0xFF}; }
+}
 
 class RGB565 : public ColorFormat
 {
@@ -144,6 +187,12 @@ public:
             ++y;
         }
     }
+    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color = color::white<ColorFormat>()) = 0;
+    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color, ColorFormat background, std::size_t padding = 2)
+    {
+        text(x, y, string, color, background, padding, padding);
+    }
+    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color, ColorFormat background, std::size_t padding_x, std::size_t padding_y) = 0;
 
 protected:
     #if _PICONSOLE_OS
@@ -179,47 +228,14 @@ public:
     PICONSOLE_MEMBER_FUNC void line_horizontal(ColorFormat color, std::size_t x, std::size_t y, std::size_t width) override;
     PICONSOLE_MEMBER_FUNC void line_vertical(ColorFormat color, std::size_t x, std::size_t y, std::size_t height) override;
     PICONSOLE_MEMBER_FUNC void line(ColorFormat color, std::size_t start_x, std::size_t start_y, std::size_t end_x, std::size_t end_y) override;
+    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color = color::white<ColorFormat>()) override;
+    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color, ColorFormat background, std::size_t padding = 2)
+    {
+        text(x, y, string, color, background, padding, padding);
+    }
+    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color, ColorFormat background, std::size_t padding_x, std::size_t padding_y) override;
     PICONSOLE_MEMBER_FUNC void wait_for_dma() const;
 
 private:
     int dma_channel{ -1 };
 };
-
-namespace color
-{
-    template <typename TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat black() { return TColorFormat{static_cast<std::uint8_t>(0x00)}; }
-    template <typename TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat dark_grey() { return TColorFormat{static_cast<std::uint8_t>(0x44)}; }
-    template <typename TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat grey() { return TColorFormat{static_cast<std::uint8_t>(0x88)}; }
-    template <typename TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat light_grey() { return TColorFormat{static_cast<std::uint8_t>(0xCC)}; }
-    template <typename TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat white() { return TColorFormat{static_cast<std::uint8_t>(0xFF)}; }
-
-    template <typename TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat red() { return TColorFormat{0xFF, 0x00, 0x00}; }
-    template <typename TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat green() { return TColorFormat{0x00, 0xFF, 0x00}; }
-    template <typename TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat blue() { return TColorFormat{0x00, 0x00, 0xFF}; }
-
-    template <typename TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat yellow() { return TColorFormat{0xFF, 0xFF, 0x00}; }
-    template <typename TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat cyan() { return TColorFormat{0x00, 0xFF, 0xFF}; }
-    template <typename TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat magenta() { return TColorFormat{0xFF, 0x00, 0xFF}; }
-}

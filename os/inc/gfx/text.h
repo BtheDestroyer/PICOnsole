@@ -6,11 +6,10 @@
 #include "interfaces/LCD.h"
 #include "gfx/typeface.h"
 
-#ifdef LCD_MODEL
-template <std::size_t TWidth>
-void print_character_row(LCD_MODEL& lcd, const std::bitset<TWidth>& character_row,
+template <typename TLCD, std::size_t TWidth>
+void print_character_row(TLCD& lcd, const std::bitset<TWidth>& character_row,
     std::uint32_t lcd_x, std::uint32_t lcd_y,
-    const LCD_MODEL::ColorFormat& color = color::white<LCD_MODEL::ColorFormat>())
+    const typename TLCD::ColorFormat& color = color::white<typename TLCD::ColorFormat>())
 {
     for (std::size_t i{ 0 }, b{ TWidth - 1}; i < TWidth; ++i, --b)
     {
@@ -22,10 +21,10 @@ void print_character_row(LCD_MODEL& lcd, const std::bitset<TWidth>& character_ro
     }
 }
 
-template <std::size_t THeight, std::size_t TWidth = THeight>
-void print_character(LCD_MODEL& lcd, const TextCharacter<THeight, TWidth>& character,
+template <typename TLCD, std::size_t THeight, std::size_t TWidth = THeight>
+void print_character(TLCD& lcd, const TextCharacter<THeight, TWidth>& character,
     std::uint32_t lcd_x, std::uint32_t lcd_y,
-    const LCD_MODEL::ColorFormat& color = color::white<LCD_MODEL::ColorFormat>())
+    const typename TLCD::ColorFormat& color = color::white<typename TLCD::ColorFormat>())
 {
     for (const auto& character_row : character)
     {
@@ -34,10 +33,10 @@ void print_character(LCD_MODEL& lcd, const TextCharacter<THeight, TWidth>& chara
     }
 }
 
-template <typeface_t TTypeface>
-void print_character(LCD_MODEL& lcd, char character,
+template <typename TLCD, typeface_t TTypeface>
+void print_character(TLCD& lcd, char character,
     std::uint32_t lcd_x, std::uint32_t lcd_y,
-    const LCD_MODEL::ColorFormat& color = color::white<LCD_MODEL::ColorFormat>(), const TTypeface& typeface = get_ascii_typeface())
+    const typename TLCD::ColorFormat& color = color::white<typename TLCD::ColorFormat>(), const TTypeface& typeface = get_ascii_typeface())
 {
     if (is_character_printable(character, typeface))
     {
@@ -45,10 +44,10 @@ void print_character(LCD_MODEL& lcd, char character,
     }
 }
 
-template <typeface_t TTypeface = std::remove_cvref_t<decltype(get_ascii_typeface())>>
-void print_string(LCD_MODEL& lcd, std::string_view string,
+template <typename TLCD, typeface_t TTypeface = std::remove_cvref_t<decltype(get_ascii_typeface())>>
+void print_string(TLCD& lcd, std::string_view string,
     std::uint32_t lcd_x, std::uint32_t lcd_y,
-    const LCD_MODEL::ColorFormat& color = color::white<LCD_MODEL::ColorFormat>(), const TTypeface& typeface = get_ascii_typeface())
+    const typename TLCD::ColorFormat& color = color::white<typename TLCD::ColorFormat>(), const TTypeface& typeface = get_ascii_typeface())
 {
     const std::uint32_t lcd_start_x{ lcd_x };
     const std::uint32_t character_width{ get_typeface_character_width<TTypeface>() + 1 };
@@ -71,4 +70,3 @@ void print_string(LCD_MODEL& lcd, std::string_view string,
         }
     }
 }
-#endif

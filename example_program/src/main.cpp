@@ -11,6 +11,7 @@ piconsole_program_init
     constexpr static RGB565 color{ color::cyan<RGB565>() };
     LCD_MODEL &lcd{ os.get_lcd() };
     lcd.fill(color);
+    os.get_lcd().text(8, 8, "Initializing program...", color::white<RGB565>(), color::black<RGB565>());
     lcd.show();
     return 0;
 }
@@ -20,6 +21,7 @@ piconsole_program_update
     constexpr static RGB565 color{ color::green<RGB565>() };
     LCD_MODEL &lcd{ os.get_lcd() };
     lcd.fill(color);
+    os.get_lcd().text(8, 32, "Hello from the\nloaded program!", color::white<RGB565>(), color::black<RGB565>());
     lcd.show();
 }
 

@@ -72,7 +72,6 @@ target_compile_definitions(piconsole_os_lib
     )
 #target_compile_options(piconsole_os_lib PUBLIC -Ofast)
 target_compile_options(piconsole_os_lib PRIVATE -Og)
-target_compile_options(piconsole_os_lib PRIVATE -fconcepts-diagnostics-depth=5)
 
 pico_enable_stdio_usb(piconsole_os_lib 0)
 pico_enable_stdio_uart(piconsole_os_lib 1)

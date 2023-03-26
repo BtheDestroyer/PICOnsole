@@ -53,9 +53,7 @@ int os_main()
     print("OS main()");
     print("&os: 0x%x\n", &os);
     
-    const std::string_view test{ "String Test\nHello, world" };
-    os.get_lcd().filled_rectangle(color::black<RGB565>(), 6, 6, 4 + get_string_width(test), 4 + get_string_height(test));
-    print_string(os.get_lcd(), test, 8u, 8u);
+    os.get_lcd().text(8, 8, "Loading Program:\n/programs/boot.elf", color::white<RGB565>(), color::black<RGB565>());
     os.get_lcd().show();
     
     {
@@ -63,7 +61,7 @@ int os_main()
         print("%s", file_contents.c_str());
     }
 
-    os.load_program("/programs/piconsole_example_program.elf");
+    os.load_program("/programs/boot.elf");
 
     //os.get_vibrator().start(1.0f, 500);
     //os.get_speaker().set_audio_generator(audio_demo);
