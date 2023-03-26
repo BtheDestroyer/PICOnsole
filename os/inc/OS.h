@@ -8,6 +8,7 @@
 #include "interfaces/SD.h"
 #include "interfaces/Speaker.h"
 #include "interfaces/Vibrator.h"
+#include "interfaces/Input.h"
 
 #define assume(x) do { if (!(x)) { __builtin_unreachable(); } } while (0)
 #if _PICONSOLE_OS_LIB
@@ -42,6 +43,7 @@ public:
 
     GETTER PICONSOLE_MEMBER_FUNC bool is_active() const { return true; }
 
+    // Interfaces
     GETTER PICONSOLE_MEMBER_FUNC LCD_MODEL& get_lcd() { return lcd; }
     GETTER PICONSOLE_MEMBER_FUNC SDCard& get_sd() { return sd; }
     GETTER PICONSOLE_MEMBER_FUNC const LCD_MODEL& get_lcd() const { return lcd; }
@@ -50,6 +52,8 @@ public:
     GETTER PICONSOLE_MEMBER_FUNC const Vibrator& get_vibrator() const { return vibrator; }
     GETTER PICONSOLE_MEMBER_FUNC Speaker& get_speaker() { return speaker; }
     GETTER PICONSOLE_MEMBER_FUNC const Speaker& get_speaker() const { return speaker; }
+    GETTER PICONSOLE_MEMBER_FUNC InputMap& get_input() { return input; }
+    GETTER PICONSOLE_MEMBER_FUNC const InputMap& get_input() const { return input; }
 
     GETTER PICONSOLE_MEMBER_FUNC std::string_view get_current_program_path() { return {current_program_path, std::strlen(current_program_path)}; }
     GETTER PICONSOLE_MEMBER_FUNC std::string_view get_current_program_directory() { return path::dir_name(current_program_path); }
@@ -68,6 +72,7 @@ private:
     Vibrator vibrator;
 #endif
     I2SSpeaker speaker;
+    InputMap input;
 
     char current_program_path[SDCard::max_path_length + 1] { 0 };
     bool program_running{ false };

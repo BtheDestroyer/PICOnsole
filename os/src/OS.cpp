@@ -6,8 +6,6 @@
 #include "hardware/structs/ssi.h"
 #include "hardware/structs/xip_ctrl.h"
 #include "pico/bootrom.h"
-#include "interfaces/LCD.h"
-#include "interfaces/SD.h"
 #include "debug.h"
 #include "program.h"
 #include <optional>
@@ -73,6 +71,23 @@ bool OS::init()
     {
         print("No valid Speaker interface to initialize.\n");
     }
+    if (input.is_valid())
+    {
+        print("Initializing input map...\n");
+        if (input.init())
+        {
+            print("Inputs initialized!\n");
+        }
+        else
+        {
+            print("Failed to initialize Input!\n");
+            exit(-4);
+        }
+    }
+    else
+    {
+        print("No Input interface to initialize.\n");
+    }
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
@@ -91,6 +106,8 @@ bool OS::uninit(bool cleanly /* = true */)
     {
         lcd.uninit();
         sd.uninit();
+        speaker.uninit();
+        input.uninit();
         gpio_deinit(LED_PIN);
     }
     print("OS unitialized\n");
@@ -119,9 +136,8 @@ void OS::update()
 {
     vibrator.update();
     speaker.update();
+    input.update();
     gpio_put(LED_PIN, !gpio_get(LED_PIN));
-    print("Hello, OS!\n");
-    sleep_ms(250);
     multicore_fifo_push_timeout_us(FIFOCodes::os_updated, 8'000);
 }
 
@@ -242,6 +258,7 @@ bool OS::load_program(std::string_view path)
     std::optional<std::uint32_t**> program_vectors;
     std::optional<program_init_fn*> program_init;
     std::optional<program_update_fn*> program_update;
+    if (0)
     {
         assume(elf_header.section_header_string_table_index > 0);
         const FSIZE_t section_header_string_table_header_offset{ FSIZE_t(elf_header.section_header_string_table_index) * FSIZE_t(elf_header.section_header_entry_size) };
@@ -318,21 +335,21 @@ bool OS::load_program(std::string_view path)
                 }
             }
         }
-        if (!program_init.has_value())
-        {
-            print("Section missing for .piconsole.program.init\n");
-            return false;
-        }
-        else if (!program_update.has_value())
-        {
-            print("Section missing for .piconsole.program.update\n");
-            return false;
-        }
-        else if (!program_vectors.has_value())
-        {
-            print("Section missing for .text.vectors\n");
-            return false;
-        }
+        // if (!program_init.has_value())
+        // {
+        //     print("Section missing for .piconsole.program.init\n");
+        //     return false;
+        // }
+        // else if (!program_update.has_value())
+        // {
+        //     print("Section missing for .piconsole.program.update\n");
+        //     return false;
+        // }
+        // else if (!program_vectors.has_value())
+        // {
+        //     print("Section missing for .text.vectors\n");
+        //     return false;
+        // }
     }
 
     reader.seek_absolute(elf_header.segment_header_offset);

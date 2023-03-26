@@ -375,15 +375,16 @@ class OS:
             "pin_mapping": {
                 'a': (0, 0),
                 'b': (0, 1),
+                'down': (0, 2),
+
                 'x': (1, 0),
                 'y': (1, 1),
-                
                 'up': (1, 2),
-                'down': (0, 2),
-                'left': (2, 2),
-                'right': (2, 1),
                 
                 'start': (2, 0),
+                'right': (2, 1),
+                'left': (2, 2),
+                
                 }
             }
         self.inputs["values"] = {name: 0 for name in self.inputs["pin_mapping"]}
