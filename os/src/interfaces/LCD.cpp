@@ -1,10 +1,12 @@
-#include "LCD.h"
+#include "interfaces/LCD.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
 #include "pico/binary_info.h"
 #include "hardware/dma.h"
 #include "debug.h"
 #include <stdlib.h>
+#include "gfx/typeface.h"
+#include "gfx/typefaces/ascii_5px.h"
 
 #undef __debug_noinline
 #if _DEBUG

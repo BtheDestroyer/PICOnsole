@@ -1,10 +1,12 @@
 #pragma once
+#include "PICOnsole_defines.h"
 #include "debug.h"
-#include "LCD.h"
 #include "OS.h"
 #include "path.h"
 #include "program.h"
-#include "SD.h"
-#include "sprite.h"
-
-void hello(void);
+#include "interfaces/SD.h"
+#include "interfaces/Speaker.h"
+#include "interfaces/LCD.h"
+#include "interfaces/Vibrator.h"
+#include "gfx/sprite.h"
+#include "gfx/text.h"

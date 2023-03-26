@@ -6,8 +6,8 @@
 #include "hardware/structs/ssi.h"
 #include "hardware/structs/xip_ctrl.h"
 #include "pico/bootrom.h"
-#include "LCD.h"
-#include "SD.h"
+#include "interfaces/LCD.h"
+#include "interfaces/SD.h"
 #include "debug.h"
 #include "program.h"
 #include <optional>

@@ -1,4 +1,4 @@
-#include "Vibrator.h"
+#include "interfaces/Vibrator.h"
 #include "pico/time.h"
 #include <algorithm>
 #include <limits>

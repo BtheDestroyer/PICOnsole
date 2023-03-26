@@ -158,6 +158,7 @@ class PicoLCD_1_8 : public ColorLCD<RGB565, 160, 128>
 public:
     using ColorLCD::buffer_size;
     using ColorLCD::buffer_type;
+    using ColorLCD::ColorFormat;
 
     PICONSOLE_MEMBER_FUNC bool init(bool final_step = true);
     PICONSOLE_MEMBER_FUNC bool uninit();

@@ -10,14 +10,16 @@ add_subdirectory(libs/FatFS_SD/FatFs_SPI)
 
 add_library(piconsole_os_lib
     "src/main.cpp"
-    "src/LCD.cpp"
-    "src/SD.cpp"
     "src/OS.cpp"
     "src/program.cpp"
     "src/PICOnsole.cpp"
-    "src/sprite.cpp"
-    "src/Speaker.cpp"
-    "src/Vibrator.cpp"
+    "src/gfx/sprite.cpp"
+    "src/gfx/text.cpp"
+    "src/gfx/typefaces/ascii_5px.cpp"
+    "src/interfaces/LCD.cpp"
+    "src/interfaces/SD.cpp"
+    "src/interfaces/Speaker.cpp"
+    "src/interfaces/Vibrator.cpp"
 )
 pico_generate_pio_header(piconsole_os_lib ${CMAKE_CURRENT_LIST_DIR}/src/i2s.pio)
 target_include_directories(piconsole_os_lib
@@ -70,6 +72,7 @@ target_compile_definitions(piconsole_os_lib
     )
 #target_compile_options(piconsole_os_lib PUBLIC -Ofast)
 target_compile_options(piconsole_os_lib PRIVATE -Og)
+target_compile_options(piconsole_os_lib PRIVATE -fconcepts-diagnostics-depth=5)
 
 pico_enable_stdio_usb(piconsole_os_lib 0)
 pico_enable_stdio_uart(piconsole_os_lib 1)

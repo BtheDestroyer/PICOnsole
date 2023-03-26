@@ -4,10 +4,10 @@
 #include "debug.h"
 #include "path.h"
 #include "PICOnsole_defines.h"
-#include "LCD.h"
-#include "SD.h"
-#include "Speaker.h"
-#include "Vibrator.h"
+#include "interfaces/LCD.h"
+#include "interfaces/SD.h"
+#include "interfaces/Speaker.h"
+#include "interfaces/Vibrator.h"
 
 #define assume(x) do { if (!(x)) { __builtin_unreachable(); } } while (0)
 #if _PICONSOLE_OS_LIB

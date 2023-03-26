@@ -10,6 +10,7 @@
 #include "hardware/gpio.h"
 #include "hardware/dma.h"
 #include "pico/binary_info.h"
+#include "gfx/typefaces/ascii_5px.h"
 
 #include <functional>
 
@@ -51,6 +52,11 @@ int os_main()
     os.init();
     print("OS main()");
     print("&os: 0x%x\n", &os);
+    
+    const std::string_view test{ "String Test\nHello, world" };
+    os.get_lcd().filled_rectangle(color::black<RGB565>(), 6, 6, 4 + get_string_width(test), 4 + get_string_height(test));
+    print_string(os.get_lcd(), test, 8u, 8u);
+    os.get_lcd().show();
     
     {
         const std::string file_contents{ os.get_sd().read_text_file("test.txt") };
