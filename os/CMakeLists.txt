@@ -10,20 +10,23 @@ add_subdirectory(libs/FatFS_SD/FatFs_SPI)
 
 add_library(piconsole_os_lib
     "src/main.cpp"
-    "src/LCD.cpp"
-    "src/SD.cpp"
     "src/OS.cpp"
     "src/program.cpp"
     "src/PICOnsole.cpp"
-    "src/sprite.cpp"
-    "src/Speaker.cpp"
-    "src/Vibrator.cpp"
+    "src/gfx/sprite.cpp"
+    "src/gfx/text.cpp"
+    "src/gfx/typefaces/ascii_5px.cpp"
+    "src/interfaces/Input.cpp"
+    "src/interfaces/LCD.cpp"
+    "src/interfaces/SD.cpp"
+    "src/interfaces/Speaker.cpp"
+    "src/interfaces/Vibrator.cpp"
 )
 pico_generate_pio_header(piconsole_os_lib ${CMAKE_CURRENT_LIST_DIR}/src/i2s.pio)
 target_include_directories(piconsole_os_lib
     PUBLIC
-        inc
-        build/os
+        ${CMAKE_CURRENT_LIST_DIR}/inc
+        ${CMAKE_CURRENT_LIST_DIR}/build/os
 )
 target_compile_definitions(piconsole_os_lib
     PUBLIC
@@ -51,12 +54,8 @@ target_compile_definitions(piconsole_os_lib
         SD_MOSI=3
         SD_MISO=4
 
-        BUTTON_CATHODE_1=16
-        BUTTON_CATHODE_2=17
-        BUTTON_CATHODE_3=18
-        BUTTON_ANODE_1=19
-        BUTTON_ANODE_2=20
-        BUTTON_ANODE_3=21
+        "BUTTON_CATHODES=16,17,18"
+        "BUTTON_ANODES=19,20,21"
 
         I2S_CLK=14
         I2S_LRC=15

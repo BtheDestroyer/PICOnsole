@@ -10,6 +10,7 @@
 #include "hardware/gpio.h"
 #include "hardware/dma.h"
 #include "pico/binary_info.h"
+#include "gfx/typefaces/ascii_5px.h"
 
 #include <functional>
 
@@ -49,15 +50,18 @@ int os_main()
 
     OS& os{ OS::get() };
     os.init();
-    puts("OS main()");
+    print("OS main()");
     print("&os: 0x%x\n", &os);
+    
+    os.get_lcd().text(8, 8, "Loading Program:\n/programs/boot.elf", color::white<RGB565>(), color::black<RGB565>());
+    os.get_lcd().show();
     
     {
         const std::string file_contents{ os.get_sd().read_text_file("test.txt") };
         print("%s", file_contents.c_str());
     }
 
-    os.load_program("/programs/piconsole_example_program.elf");
+    os.load_program("/programs/boot.elf");
 
     //os.get_vibrator().start(1.0f, 500);
     //os.get_speaker().set_audio_generator(audio_demo);

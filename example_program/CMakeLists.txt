@@ -31,7 +31,7 @@ pico_enable_stdio_uart(piconsole_example_program 1)
 pico_enable_stdio_usb(piconsole_example_program 1)
 
 #target_compile_options(piconsole_example_program PUBLIC -nostartfiles -nolibc -nostdlib)
-set_target_properties(piconsole_example_program PROPERTIES PICO_TARGET_LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/piconsole_program_memmap.ld)
+set_target_properties(piconsole_example_program PROPERTIES PICO_TARGET_LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/../piconsole_program_memmap.ld)
 
 pico_add_extra_outputs(piconsole_example_program)
 target_link_options(piconsole_example_program PRIVATE -Wl,--no-gc-sections)

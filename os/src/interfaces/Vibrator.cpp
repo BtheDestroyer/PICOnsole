@@ -1,6 +1,7 @@
-#include "Vibrator.h"
+#include "interfaces/Vibrator.h"
 #include "pico/time.h"
 #include <algorithm>
+#include <limits>
 
 void PWMVibrator::start(float strength, std::uint32_t runtime_ms)
 {

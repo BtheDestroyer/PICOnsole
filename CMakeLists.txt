@@ -8,3 +8,4 @@ pico_sdk_init()
 
 add_subdirectory(os)
 add_subdirectory(example_program)
+add_subdirectory(input_test)

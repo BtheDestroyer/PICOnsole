@@ -1,10 +1,13 @@
-#include "LCD.h"
+#include "interfaces/LCD.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
 #include "pico/binary_info.h"
 #include "hardware/dma.h"
 #include "debug.h"
 #include <stdlib.h>
+#include "gfx/text.h"
+#include "gfx/typeface.h"
+#include "gfx/typefaces/ascii_5px.h"
 
 #undef __debug_noinline
 #if _DEBUG
@@ -314,6 +317,17 @@ void PicoLCD_1_8::line_vertical(ColorFormat color, std::size_t x, std::size_t y,
 void PicoLCD_1_8::line(ColorFormat color, std::size_t start_x, std::size_t start_y, std::size_t end_x, std::size_t end_y)
 {
     // TODO
+}
+
+void PicoLCD_1_8::text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color)
+{
+    print_string(*this, string, x, y, color);
+}
+
+void PicoLCD_1_8::text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color, ColorFormat background, std::size_t padding_x, std::size_t padding_y)
+{
+    filled_rectangle(background, x, y, padding_x * 2 + get_string_width(string), padding_y * 2 + get_string_height(string));
+    text(x + padding_x, y + padding_y, string, color);
 }
 
 void PicoLCD_1_8::wait_for_dma() const

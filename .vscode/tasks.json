@@ -1,39 +1,72 @@
 {
     "version": "2.0.0",
     "tasks": [
-        {
-            "label": "PicoUART",
-            "command": "minicom",
-            "args": [
-                "-D", "/dev/ttyACM0",
-                "-b", "115200"
-            ],
-            "type": "shell",
-            "isBackground": true,
-            
-            // This task is run before some debug tasks.
-            // Problem is, it's a watch script, and since it never exits, VSCode
-            // complains. All this is needed so VSCode just lets it run.
-            "problemMatcher": [
-              {
-                "pattern": [
-                  {
-                    "regexp": ".",
-                    "file": 1,
-                    "location": 2,
-                    "message": 3
-                  }
-                ],
-                "background": {
-                  "activeOnStart": true,
-                  "beginsPattern": ".",
-                  "endsPattern": ".",
+      {
+          "label": "PicoProbe UART",
+          "command": "minicom",
+          "args": [
+              "-D", "/dev/ttyACM0",
+              "-o",
+              "-b", "115200"
+          ],
+          "type": "shell",
+          "isBackground": true,
+          
+          // This task is run before some debug tasks.
+          // Problem is, it's a watch script, and since it never exits, VSCode
+          // complains. All this is needed so VSCode just lets it run.
+          "problemMatcher": [
+            {
+              "pattern": [
+                {
+                  "regexp": ".",
+                  "file": 1,
+                  "location": 2,
+                  "message": 3
                 }
+              ],
+              "background": {
+                "activeOnStart": true,
+                "beginsPattern": ".",
+                "endsPattern": ".",
               }
-            ]
-        },
+            }
+          ]
+      },
+      {
+          "label": "Pi4 UART",
+          "command": "minicom",
+          "args": [
+              "-D", "/dev/serial0",
+              "-o",
+              "-b", "115200"
+          ],
+          "type": "shell",
+          "isBackground": true,
+          
+          // This task is run before some debug tasks.
+          // Problem is, it's a watch script, and since it never exits, VSCode
+          // complains. All this is needed so VSCode just lets it run.
+          "problemMatcher": [
+            {
+              "pattern": [
+                {
+                  "regexp": ".",
+                  "file": 1,
+                  "location": 2,
+                  "message": 3
+                }
+              ],
+              "background": {
+                "activeOnStart": true,
+                "beginsPattern": ".",
+                "endsPattern": ".",
+              }
+            }
+          ]
+      },
         {
-          "label": "killPicoUART",
+          "label": "Kill UART",
           "type": "shell",
           "command": "echo ${input:terminate}",
           "problemMatcher": []

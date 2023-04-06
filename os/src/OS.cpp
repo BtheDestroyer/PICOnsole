@@ -6,10 +6,9 @@
 #include "hardware/structs/ssi.h"
 #include "hardware/structs/xip_ctrl.h"
 #include "pico/bootrom.h"
-#include "LCD.h"
-#include "SD.h"
 #include "debug.h"
 #include "program.h"
+#include <optional>
 
 #include "RP2040.h"
 #include "pico/multicore.h"
@@ -72,6 +71,23 @@ bool OS::init()
     {
         print("No valid Speaker interface to initialize.\n");
     }
+    if (input.is_valid())
+    {
+        print("Initializing input map...\n");
+        if (input.init())
+        {
+            print("Inputs initialized!\n");
+        }
+        else
+        {
+            print("Failed to initialize Input!\n");
+            exit(-4);
+        }
+    }
+    else
+    {
+        print("No Input interface to initialize.\n");
+    }
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
@@ -90,6 +106,8 @@ bool OS::uninit(bool cleanly /* = true */)
     {
         lcd.uninit();
         sd.uninit();
+        speaker.uninit();
+        input.uninit();
         gpio_deinit(LED_PIN);
     }
     print("OS unitialized\n");
@@ -118,9 +136,8 @@ void OS::update()
 {
     vibrator.update();
     speaker.update();
+    input.update();
     gpio_put(LED_PIN, !gpio_get(LED_PIN));
-    print("Hello, OS!\n");
-    sleep_ms(250);
     multicore_fifo_push_timeout_us(FIFOCodes::os_updated, 8'000);
 }
 
@@ -181,7 +198,9 @@ struct DeferredCopy
     } source;
 };
 
+#ifdef CALL_WITH_INTERUPTS_DISABLED
 #undef CALL_WITH_INTERUPTS_DISABLED
+#endif
 #define CALL_WITH_INTERUPTS_DISABLED(...) \
     { \
         const std::uint32_t interupts{ save_and_disable_interrupts() }; \
@@ -189,7 +208,7 @@ struct DeferredCopy
         restore_interrupts(interupts); \
     }
 
-bool __no_inline_not_in_flash_func(OS::load_program)(std::string_view path)
+bool OS::load_program(std::string_view path)
 {
     if (path.size() > SDCard::max_path_length)
     {
@@ -239,6 +258,7 @@ bool __no_inline_not_in_flash_func(OS::load_program)(std::string_view path)
     std::optional<std::uint32_t**> program_vectors;
     std::optional<program_init_fn*> program_init;
     std::optional<program_update_fn*> program_update;
+    if (0)
     {
         assume(elf_header.section_header_string_table_index > 0);
         const FSIZE_t section_header_string_table_header_offset{ FSIZE_t(elf_header.section_header_string_table_index) * FSIZE_t(elf_header.section_header_entry_size) };
@@ -315,158 +335,175 @@ bool __no_inline_not_in_flash_func(OS::load_program)(std::string_view path)
                 }
             }
         }
-        if (!program_init.has_value())
-        {
-            print("Section missing for .piconsole.program.init\n");
-            return false;
-        }
-        else if (!program_update.has_value())
-        {
-            print("Section missing for .piconsole.program.update\n");
-            return false;
-        }
-        else if (!program_vectors.has_value())
-        {
-            print("Section missing for .text.vectors\n");
-            return false;
-        }
+        // if (!program_init.has_value())
+        // {
+        //     print("Section missing for .piconsole.program.init\n");
+        //     return false;
+        // }
+        // else if (!program_update.has_value())
+        // {
+        //     print("Section missing for .piconsole.program.update\n");
+        //     return false;
+        // }
+        // else if (!program_vectors.has_value())
+        // {
+        //     print("Section missing for .text.vectors\n");
+        //     return false;
+        // }
     }
 
-    print("Erasing %lu sectors on existing flash...\n", std::uint32_t(piconsole_program_flash_size / FLASH_SECTOR_SIZE));
-    CALL_WITH_INTERUPTS_DISABLED(flash_range_erase(piconsole_program_flash_offset, piconsole_program_flash_size));
     reader.seek_absolute(elf_header.segment_header_offset);
     print("Loading %d segments...\n", elf_header.segment_header_count);
     print("             idx: Type Offset     VirtAddr   PhysAddr   FileSize MemSize Flags (Raw)    Alignment\n");
     std::vector<DeferredCopy> deferred_copies;
+    std::vector<SegmentHeader> segment_headers;
+    segment_headers.resize(elf_header.segment_header_count);
+    for (std::size_t i{ 0 }; i < elf_header.segment_header_count; ++i)
     {
-        SegmentHeader segment_header;
-        FSIZE_t current_segment_header_offset{ elf_header.segment_header_offset };
-        for (std::size_t i{ 0 }; i < elf_header.segment_header_count; ++i)
+        if (!reader.read<SegmentHeader>(segment_headers[i]))
         {
-            if (!reader.read<SegmentHeader>(segment_header))
+            print("Failed to read segment header %d!\n", i);
+            std::memset(current_program_path, 0, count_of(current_program_path));
+            return false;
+        }
+        print(" %3d:", i);
+        if (segment_headers[i].type < SegmentHeader::Type::Count)
+        {
+            print(" %.4d", segment_headers[i].type);
+        }
+        else
+        {
+            print(" ????");
+        }
+        print(" 0x%08lx 0x%08lx 0x%08lx",
+            segment_headers[i].content_offset, segment_headers[i].virtual_address, segment_headers[i].physical_address);
+        print(" 0x%05x  0x%05x",
+            segment_headers[i].segment_size, segment_headers[i].memory_size);
+        constexpr static auto has_flag{
+            [](SegmentHeader::Flags flags, SegmentHeader::Flags mask)
             {
-                print("Failed to read segment header %d!\n", i);
-                std::memset(current_program_path, 0, count_of(current_program_path));
-                return false;
+                const std::uint32_t masked{ static_cast<std::uint32_t>(flags) & static_cast<std::uint32_t>(mask) };
+                return masked == static_cast<std::uint32_t>(mask);
             }
-            constexpr static auto has_flag{
-                [](SegmentHeader::Flags flags, SegmentHeader::Flags mask)
-                {
-                    const std::uint32_t masked{ static_cast<std::uint32_t>(flags) & static_cast<std::uint32_t>(mask) };
-                    return masked == static_cast<std::uint32_t>(mask);
-                }
-            };
-            const FSIZE_t next_segment_header_offset{ current_segment_header_offset + sizeof(SegmentHeader) };
-            print("(%10llu)", current_segment_header_offset);
-            print(" %3d:", i);
-            if (segment_header.type < SegmentHeader::Type::Count)
+        };
+        print(" %c%c%c",
+            has_flag(segment_headers[i].flags, SegmentHeader::Flags::R) ? 'R' : ' ',
+            has_flag(segment_headers[i].flags, SegmentHeader::Flags::W) ? 'W' : ' ',
+            has_flag(segment_headers[i].flags, SegmentHeader::Flags::X) ? 'X' : ' ');
+        print("   (0x%04x) 0x%04x\n", segment_headers[i].flags, segment_headers[i].alignment);
+    }
+    // Erase existing flash
+    for (const SegmentHeader& segment_header : segment_headers)
+    {
+        if (segment_header.physical_address < piconsole_program_flash_start
+            || segment_header.physical_address >= piconsole_program_flash_end)
+        {
+            // Segment not in flash, nothing to erase
+            continue;
+        }
+        const std::uint32_t unaligned_flash_offset{ segment_header.physical_address - XIP_BASE };
+        const std::uint32_t sector_alignment_error_of_segment_start{ unaligned_flash_offset % FLASH_SECTOR_SIZE };
+        const std::uint32_t flash_offset{
+            unaligned_flash_offset - (sector_alignment_error_of_segment_start > 0u ? 1u : 0u)
+        };
+        const std::uint32_t sector_alignment_error_of_segment_size{ segment_header.segment_size % FLASH_SECTOR_SIZE };
+        // Erase 1 extra segment if division results in truncation
+        const std::uint32_t sector_count{
+            segment_header.segment_size / FLASH_SECTOR_SIZE
+            + (sector_alignment_error_of_segment_size > 0u ? 1u : 0u) 
+            + (sector_alignment_error_of_segment_start > 0u ? 1u : 0u)
+        };
+        print("Erasing %lu sectors on existing flash starting at 0x%.08x...\n", sector_count, segment_header.physical_address);
+        CALL_WITH_INTERUPTS_DISABLED(flash_range_erase(flash_offset, sector_count * FLASH_SECTOR_SIZE));
+    }
+    // Program flash with new data
+    for (const SegmentHeader& segment_header : segment_headers)
+    {
+        // Temporarily borrowing program RAM; whatever was there won't matter anymore anyway
+        // TODO: Chunk this in case the segment_size is > 192KB
+        if (segment_header.physical_address >= piconsole_program_flash_start)
+        {
+            if (segment_header.physical_address < piconsole_program_flash_end)
             {
-                print(" %.4d", segment_header.type);
+                // Copy directly to flash
+                // Flash writes need to be page aligned, so first we need to copy the bytes
+                //   from the beginning of the page we're programming to ram...
+                const std::size_t leading_byte_count{ segment_header.physical_address % 0x100 };
+                std::span<std::uint8_t> leading_flash{reinterpret_cast<std::uint8_t*>(segment_header.physical_address - leading_byte_count), leading_byte_count};
+                std::span<std::uint8_t> leading_RAM{reinterpret_cast<std::uint8_t*>(piconsole_program_ram_start), leading_byte_count};
+                //std::memcpy(leading_RAM.data(), leading_flash.data(), leading_byte_count);
+                std::memset(leading_RAM.data(), 0xA5, leading_byte_count);
+                // ...then we can read the data we want to program from the SD card...
+                std::span<std::uint8_t> segment_data{reinterpret_cast<std::uint8_t*>(piconsole_program_ram_start + leading_byte_count), segment_header.segment_size};
+                reader.seek_absolute(segment_header.content_offset);
+                if (!reader.read_bytes(segment_data))
+                {
+                    print("Failed to read segment data\n");
+                    return false;
+                }
+                // ...then we can write the whole thing back to flash.
+                //   See flash programming example
+                print("\tCopying directly from RAM to flash...\n");
+                // ...then we need to end with the trailing bytes of the last written page...
+                const std::size_t trailing_offset{ leading_byte_count + segment_data.size() };
+                const std::size_t alignment_error{ trailing_offset % 0x100 };
+                const std::size_t trailing_byte_count{ alignment_error == 0 ? 0 : 0x100 - alignment_error };
+                std::span<std::uint8_t> trailing_flash{reinterpret_cast<std::uint8_t*>(segment_header.physical_address + trailing_offset), trailing_byte_count};
+                std::span<std::uint8_t> trailing_RAM{reinterpret_cast<std::uint8_t*>(piconsole_program_ram_start + trailing_offset), trailing_byte_count};
+                std::memcpy(trailing_RAM.data(), trailing_flash.data(), trailing_byte_count);
+                // ..and finally we can write everything back to flash.
+                const std::size_t total_byte_count{ leading_byte_count + segment_data.size() + trailing_byte_count };
+                hard_assert(total_byte_count % 0x100 == 0);
+                const std::size_t flash_offset{ reinterpret_cast<std::size_t>(leading_flash.data()) - XIP_BASE };
+                //flash_range_program(flash_offset, leading_RAM.data(), total_byte_count);
+                CALL_WITH_INTERUPTS_DISABLED(flash_range_program(flash_offset, leading_RAM.data(), total_byte_count));
+                print("\t0x%.08x == 0x%.08x\n", *(std::uint32_t*)(segment_data.data()), *(std::uint32_t*)(segment_header.physical_address));
+                print("\tDone.\n");
             }
-            else
+            else if (segment_header.physical_address >= piconsole_program_ram_start
+                && segment_header.physical_address < piconsole_program_ram_end)
             {
-                print(" ????");
+                // Defer segment copy into RAM to the end
+                const DeferredCopy copy{
+                    .segment_size = segment_header.segment_size,
+                    .memory_size = segment_header.memory_size,
+                    .virtual_address = segment_header.virtual_address,
+                    .file_offset = segment_header.content_offset,
+                    .source = DeferredCopy::Source::ELF
+                };
+                print("\tDeferring copy from ELF (0x%04x) to RAM (0x%08lx)!\n",
+                    copy.file_offset, copy.virtual_address);
+                deferred_copies.emplace_back(std::move(copy));
             }
-            print(" 0x%08lx 0x%08lx 0x%08lx",
-                segment_header.content_offset, segment_header.virtual_address, segment_header.physical_address);
-            print(" 0x%05x  0x%05x",
-                segment_header.segment_size, segment_header.memory_size);
-            print(" %c%c%c",
-                has_flag(segment_header.flags, SegmentHeader::Flags::R) ? 'R' : ' ',
-                has_flag(segment_header.flags, SegmentHeader::Flags::W) ? 'W' : ' ',
-                has_flag(segment_header.flags, SegmentHeader::Flags::X) ? 'X' : ' ');
-            print("   (0x%04x) 0x%04x ->    %llu\n",
-                segment_header.flags, segment_header.alignment, next_segment_header_offset);
-            
-            // Temporarily borrowing program RAM; whatever was there won't matter anymore anyway
-            // TODO: Chunk this in case the segment_size is > 192KB
-            if (segment_header.physical_address >= piconsole_program_flash_start)
+            if (segment_header.virtual_address != segment_header.physical_address)
             {
-                if (segment_header.physical_address < piconsole_program_flash_end)
+                // May be copying from flash to RAM (preinitialized data)
+                if (segment_header.virtual_address < piconsole_program_ram_start
+                    || segment_header.virtual_address >= piconsole_program_ram_end)
                 {
-                    // Copy directly to flash
-                    // Flash writes need to be page aligned, so first we need to copy the bytes
-                    //   from the beginning of the page we're programming to ram...
-                    const std::size_t leading_byte_count{ segment_header.physical_address % 0x100 };
-                    std::span<std::uint8_t> leading_flash{reinterpret_cast<std::uint8_t*>(segment_header.physical_address - leading_byte_count), leading_byte_count};
-                    std::span<std::uint8_t> leading_RAM{reinterpret_cast<std::uint8_t*>(piconsole_program_ram_start), leading_byte_count};
-                    //std::memcpy(leading_RAM.data(), leading_flash.data(), leading_byte_count);
-                    std::memset(leading_RAM.data(), 0xA5, leading_byte_count);
-                    // ...then we can read the data we want to program from the SD card...
-                    std::span<std::uint8_t> segment_data{reinterpret_cast<std::uint8_t*>(piconsole_program_ram_start + leading_byte_count), segment_header.segment_size};
-                    reader.seek_absolute(segment_header.content_offset);
-                    if (!reader.read_bytes(segment_data))
-                    {
-                        print("Failed to read segment data\n");
-                        return false;
-                    }
-                    reader.seek_absolute(next_segment_header_offset);
-                    // ...then we can write the whole thing back to flash.
-                    //   See flash programming example
-                    print("\tCopying directly from RAM to flash...\n");
-                    // ...then we need to end with the trailing bytes of the last written page...
-                    const std::size_t trailing_offset{ leading_byte_count + segment_data.size() };
-                    const std::size_t alignment_error{ trailing_offset % 0x100 };
-                    const std::size_t trailing_byte_count{ alignment_error == 0 ? 0 : 0x100 - alignment_error };
-                    std::span<std::uint8_t> trailing_flash{reinterpret_cast<std::uint8_t*>(segment_header.physical_address + trailing_offset), trailing_byte_count};
-                    std::span<std::uint8_t> trailing_RAM{reinterpret_cast<std::uint8_t*>(piconsole_program_ram_start + trailing_offset), trailing_byte_count};
-                    std::memcpy(trailing_RAM.data(), trailing_flash.data(), trailing_byte_count);
-                    // ..and finally we can write everything back to flash.
-                    const std::size_t total_byte_count{ leading_byte_count + segment_data.size() + trailing_byte_count };
-                    hard_assert(total_byte_count % 0x100 == 0);
-                    const std::size_t flash_offset{ reinterpret_cast<std::size_t>(leading_flash.data()) - XIP_BASE };
-                    //flash_range_program(flash_offset, leading_RAM.data(), total_byte_count);
-                    CALL_WITH_INTERUPTS_DISABLED(flash_range_program(flash_offset, leading_RAM.data(), total_byte_count));
-                    print("\t0x%.08x == 0x%.08x\n", *(std::uint32_t*)(segment_data.data()), *(std::uint32_t*)(segment_header.physical_address));
-                    print("\tDone.\n");
+                    print("\tInvalid segment initialization! virtual_address != physical_address, but virtual_address isn't in program RAM!\n");
+                    return false;
                 }
-                else if (segment_header.physical_address >= piconsole_program_ram_start
-                    && segment_header.physical_address < piconsole_program_ram_end)
+                else if (segment_header.physical_address < piconsole_program_flash_start
+                        || segment_header.physical_address >= piconsole_program_flash_end)
                 {
-                    // Defer segment copy into RAM to the end
-                    const DeferredCopy copy{
-                        .segment_size = segment_header.segment_size,
-                        .memory_size = segment_header.memory_size,
-                        .virtual_address = segment_header.virtual_address,
-                        .file_offset = segment_header.content_offset,
-                        .source = DeferredCopy::Source::ELF
-                    };
-                    print("\tDeferring copy from ELF (0x%04x) to RAM (0x%08lx)!\n",
-                        copy.file_offset, copy.virtual_address);
-                    deferred_copies.emplace_back(std::move(copy));
+                    print("\tInvalid segment initialization! virtual_address != physical_address, but physical_address isn't in program Flash!\n");
+                    return false;
                 }
-                if (segment_header.virtual_address != segment_header.physical_address)
-                {
-                    // May be copying from flash to RAM (preinitialized data)
-                    if (segment_header.virtual_address < piconsole_program_ram_start
-                        || segment_header.virtual_address >= piconsole_program_ram_end)
-                    {
-                        print("\tInvalid segment initialization! virtual_address != physical_address, but virtual_address isn't in program RAM!\n");
-                        return false;
-                    }
-                    else if (segment_header.physical_address < piconsole_program_flash_start
-                            || segment_header.physical_address >= piconsole_program_flash_end)
-                    {
-                        print("\tInvalid segment initialization! virtual_address != physical_address, but physical_address isn't in program Flash!\n");
-                        return false;
-                    }
-                    // Defer segment copy into RAM to the end
-                    const DeferredCopy copy{
-                        .segment_size = segment_header.segment_size,
-                        .memory_size = segment_header.memory_size,
-                        .virtual_address = segment_header.virtual_address,
-                        .physical_address = segment_header.physical_address,
-                        .source = DeferredCopy::Source::Flash
-                    };
-                    print("\tDeferring copy from flash (0x%08lx) to RAM (0x%08lx)!\n", copy.physical_address, copy.virtual_address);
-                    deferred_copies.emplace_back(std::move(copy));
-                }
+                // Defer segment copy into RAM to the end
+                const DeferredCopy copy{
+                    .segment_size = segment_header.segment_size,
+                    .memory_size = segment_header.memory_size,
+                    .virtual_address = segment_header.virtual_address,
+                    .physical_address = segment_header.physical_address,
+                    .source = DeferredCopy::Source::Flash
+                };
+                print("\tDeferring copy from flash (0x%08lx) to RAM (0x%08lx)!\n", copy.physical_address, copy.virtual_address);
+                deferred_copies.emplace_back(std::move(copy));
             }
-            current_segment_header_offset = next_segment_header_offset;
         }
     }
     print("\tInitial copies to flash done; doing any deferred copies...\n");
-    __compiler_memory_barrier();
     const int dma_channel{ dma_claim_unused_channel(false) };
     for (const DeferredCopy& copy : deferred_copies)
     {

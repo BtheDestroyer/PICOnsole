@@ -24,8 +24,11 @@ specific language governing permissions and limitations under the License.
 #include "sd_spi.h"
 #include "spi.h"
 
-//#define TRACE_PRINTF(fmt, args...)
+#if DEBUG && !NDEBUG
 #define TRACE_PRINTF printf  // task_printf
+#else
+#define TRACE_PRINTF(fmt, args...)
+#endif
 
 void sd_spi_go_high_frequency(sd_card_t *pSD) {
     uint actual = spi_set_baudrate(pSD->spi->hw_inst, pSD->spi->baud_rate);
