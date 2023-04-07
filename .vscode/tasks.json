@@ -5,7 +5,7 @@
           "label": "PicoProbe UART",
           "command": "minicom",
           "args": [
-              "-D", "/dev/ttyACM0",
+              "-D", "/dev/ttyACM1",
               "-o",
               "-b", "115200"
           ],

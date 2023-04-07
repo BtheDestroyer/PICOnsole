@@ -214,9 +214,12 @@ public:
         using Typeface = std::remove_cvref_t<decltype(typeface)>;
         const std::uint32_t character_width{ get_typeface_character_width<Typeface>() + 1u };
         const std::uint32_t character_height{ get_typeface_character_height<Typeface>() + 1u };
-        while (!string.empty() && settings.y < settings.end_y)
+        while (!string.empty()
+            && (settings.y + settings.padding_y.value_or(settings.padding_x))
+                < (settings.end_y - settings.padding_y.value_or(settings.padding_x))
+            )
         {
-            const std::uint32_t max_line_width_px{ settings.end_x - settings.x };
+            const std::uint32_t max_line_width_px{ (settings.end_x - settings.padding_x) - (settings.x + settings.padding_x) };
             const std::size_t newline_index{ string.find('\n') };
             const std::uint32_t line_width_characters{
                 std::min<std::uint32_t>(
@@ -228,7 +231,7 @@ public:
             const std::uint32_t line_width_px{ std::min<std::uint32_t>(line_width_characters * character_width, max_line_width_px) };
             std::string_view line{ string.substr(0, line_width_characters) };
             gfx::text::print_string<super>(*this, line, typeface, settings);
-            if (settings.wrap_mode == TextSettings::WrapMode::Clip && !has_newline)
+            if (settings.wrap_mode == gfx::text::WrapMode::Clip && !has_newline)
             {
                 return;
             }
@@ -257,10 +260,11 @@ public:
             const bool has_newline{ newline_index != std::string_view::npos };
             const std::uint32_t line_width_px{ std::min<std::uint32_t>(line_width_characters * character_width, max_line_width_px) };
             TextSettings line_settings{ settings };
+            line_settings.wrap_mode = gfx::text::WrapMode::Clip;
             line_settings.x -= line_width_px / 2u;
             std::string_view line{ string.substr(0, line_width_characters) };
             gfx::text::print_string<super>(*this, line, typeface, line_settings);
-            if (settings.wrap_mode == TextSettings::WrapMode::Clip && !has_newline)
+            if (settings.wrap_mode == gfx::text::WrapMode::Clip && !has_newline)
             {
                 return;
             }

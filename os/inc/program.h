@@ -10,6 +10,9 @@ typedef void program_update_fn(OS&);
 enum FIFOCodes : std::uint32_t {
     program_launch_success = 1,
     os_updated = 2,
+
+    error_generic = 100,
+    error_crash = 101,
 };
 
 class OS;
@@ -26,7 +29,7 @@ constexpr std::size_t piconsole_program_flash_start{ XIP_BASE + piconsole_progra
 constexpr std::size_t piconsole_program_flash_end{ XIP_BASE + 0x00200000 };
 constexpr std::size_t piconsole_program_flash_size{ piconsole_program_flash_end - piconsole_program_flash_start };
 static_assert(piconsole_program_flash_size % FLASH_SECTOR_SIZE == 0);
-constexpr std::size_t piconsole_program_ram_offset{ 0x00010000 };
+constexpr std::size_t piconsole_program_ram_offset{ 0x00018000 };
 constexpr std::size_t piconsole_program_ram_start{ SRAM_BASE + piconsole_program_ram_offset };
 constexpr std::size_t piconsole_program_ram_end{ SRAM_BASE + 0x0003E000 };
 constexpr std::size_t piconsole_program_ram_size{ piconsole_program_ram_end - piconsole_program_ram_start - 1 };

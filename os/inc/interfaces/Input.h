@@ -15,11 +15,11 @@
 
 enum class Button {
                 // C, A
-    B,          // 0, 0
-    A,          // 0, 1
+    A,          // 0, 0
+    B,          // 0, 1
     DPad_Down,  // 0, 2
-    Y,          // 1, 0
-    X,          // 1, 1
+    X,          // 1, 0
+    Y,          // 1, 1
     DPad_Up,    // 1, 2
     Start,      // 2, 0
     DPad_Right, // 2, 1

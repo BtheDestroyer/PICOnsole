@@ -60,9 +60,15 @@ public:
 
     KEEP virtual bool __no_inline_not_in_flash_func(load_program)(std::string_view path);
     KEEP PICONSOLE_MEMBER_FUNC bool stop_program();
+    KEEP PICONSOLE_MEMBER_FUNC void show_program_error(std::string_view message);
+    KEEP PICONSOLE_MEMBER_FUNC void show_fatal_program_error(std::string_view message);
 
 private:
     PICONSOLE_MEMBER_FUNC void show_color_test();
+    KEEP PICONSOLE_MEMBER_FUNC void show_os_error(std::string_view message);
+    KEEP PICONSOLE_MEMBER_FUNC void show_fatal_os_error(std::string_view message);
+
+    KEEP PICONSOLE_MEMBER_FUNC void show_error_internal(std::string_view header, std::string_view message, std::string_view footer);
 
     LCD_MODEL lcd;
     SDCard sd;

@@ -29,8 +29,8 @@ MEMORY
     OS_FLASH(rx) : ORIGIN = ORIGIN(BOOT2_FLASH) + LENGTH(BOOT2_FLASH), LENGTH = 512k - LENGTH(BOOT2_FLASH)
     PROGRAM_FLASH(rx) : ORIGIN = ORIGIN(OS_FLASH) + LENGTH(OS_FLASH), LENGTH = LENGTH(FLASH) - (LENGTH(BOOT2_FLASH) + LENGTH(OS_FLASH))
     RAM(rwx) : ORIGIN =  0x20000000, LENGTH = 256k
-    OS_RAM(rwx) : ORIGIN =  ORIGIN(RAM), LENGTH = 64k
-    PROGRAM_RAM(rwx) : ORIGIN =  ORIGIN(OS_RAM) + LENGTH(OS_RAM), LENGTH = ORIGIN(RAM) - LENGTH(OS_RAM)
+    OS_RAM(rwx) : ORIGIN =  ORIGIN(RAM), LENGTH = 96k
+    PROGRAM_RAM(rwx) : ORIGIN =  ORIGIN(RAM) + LENGTH(OS_RAM), LENGTH = LENGTH(RAM) - LENGTH(OS_RAM)
     SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
 }
@@ -46,7 +46,7 @@ SECTIONS
 
     .flash_begin : {
         __flash_binary_start = .;
-    } > FLASH
+    } > PROGRAM_FLASH
 
     /*
     .boot2 : {
@@ -59,20 +59,22 @@ SECTIONS
         "ERROR: Pico second stage bootloader must be 256 bytes in size")
     */
 
+    .text.main : {
+        KEEP (*(.piconsole.program.main))
+    } > PROGRAM_FLASH
+
     .text : {
         __logical_binary_start = .;
-    } > FLASH
+    } > PROGRAM_FLASH
     .text.vectors : {
         KEEP (*(.vectors))
         KEEP (*(.binary_info_header))
         __binary_info_header_end = .;
-    } > FLASH
+    } > PROGRAM_FLASH
     .text.reset : {
         KEEP (*(.reset))
-    } > FLASH
-    .text.main : {
-        KEEP (*(.piconsole.program.main))
     } > PROGRAM_FLASH
+    
     .text.general : {
         /* TODO revisit this now memset/memcpy/float in ROM */
         /* bit of a hack right now to exclude all floating point and time critical (e.g. memset, memcpy) code from

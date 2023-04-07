@@ -90,7 +90,7 @@
         (number "26" (effects (font (size 1.27 1.27))))
       )
       (pin bidirectional line (at 11.43 -21.59 180) (length 2.54)
-        (name "GP22" (effects (font (size 1.27 1.27))))
+        (name "GP21" (effects (font (size 1.27 1.27))))
         (number "27" (effects (font (size 1.27 1.27))))
       )
       (pin power_in line (at 11.43 -19.05 180) (length 2.54)

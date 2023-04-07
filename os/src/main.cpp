@@ -66,7 +66,7 @@ int os_main()
 
     os.load_program("/programs/boot.elf");
 
-    //os.get_vibrator().start(1.0f, 500);
+    os.get_vibrator().start(1.0f, 500);
     //os.get_speaker().set_audio_generator(audio_demo);
 
     while(os.is_active())

@@ -7,6 +7,7 @@
 #include "hardware/structs/xip_ctrl.h"
 #include "pico/bootrom.h"
 #include "debug.h"
+#include "gfx/typeface.h"
 #include "program.h"
 #include <optional>
 
@@ -37,8 +38,7 @@ bool OS::init()
     print("lcd address: 0x%x\n", &lcd);
     if (!lcd.init())
     {
-        print("Failed to create LCD interface!\n");
-        exit(-1);
+        show_fatal_os_error("Failed to create LCD interface!");
     }
     print("Created LCD interface with a baudrate of %u\n", lcd.get_baudrate());
 
@@ -48,8 +48,7 @@ bool OS::init()
     print("Creating SD interface (%d bytes)...\n", sizeof(SDCard));
     if (!sd.init())
     {
-        print("Failed to create SD interface!\n");
-        exit(-2);
+        show_fatal_os_error("Failed to create SD interface!");
     }
     print("Created SD interface\n");
 
@@ -63,8 +62,7 @@ bool OS::init()
         }
         else
         {
-            print("Failed to initialize Speaker!\n");
-            exit(-3);
+            show_fatal_os_error("Failed to initialize Speaker!");
         }
     }
     else
@@ -80,8 +78,7 @@ bool OS::init()
         }
         else
         {
-            print("Failed to initialize Input!\n");
-            exit(-4);
+            show_fatal_os_error("Failed to initialize Input!");
         }
     }
     else
@@ -134,11 +131,27 @@ void OS::show_color_test()
 
 void OS::update()
 {
+    {
+        std::uint32_t program_status;
+        multicore_fifo_pop_timeout_us(100, &program_status);
+        switch (static_cast<FIFOCodes>(program_status))
+        {
+        case FIFOCodes::error_generic:
+            show_program_error("Program has pushed a generic error signal during the last update.");
+            break;
+        case FIFOCodes::error_crash:
+            show_fatal_program_error("Program has pushed a generic crash signal during the last update.");
+            break;
+        }
+    }
     vibrator.update();
     speaker.update();
     input.update();
     gpio_put(LED_PIN, !gpio_get(LED_PIN));
-    multicore_fifo_push_timeout_us(FIFOCodes::os_updated, 8'000);
+    if (program_running)
+    {
+        multicore_fifo_push_timeout_us(FIFOCodes::os_updated, 8'000);
+    }
 }
 
 // Taken directly from flash_ssi_dma example
@@ -212,7 +225,8 @@ bool OS::load_program(std::string_view path)
 {
     if (path.size() > SDCard::max_path_length)
     {
-        print("Error: Can't load path (length %u > %u)", path.size(), SDCard::max_path_length);
+        show_os_error((std::stringstream{} << "Can't load program from path as it exceeds the max path length (" << path.size() << ", " << SDCard::max_path_length << ")").str());
+        print("While loading path: ");
         // Path printed manually to avoid allocations
         for (const char& character : path)
         {
@@ -235,7 +249,7 @@ bool OS::load_program(std::string_view path)
     {
         if (elf_header.identifier.magic_number[i] != ELFHeader::Identifier::expected_magic_number[i])
         {
-            print("Path provided to OS::load_program is not a valid ELF (magic number mismatch): %s\n", current_program_path);
+            show_os_error((std::stringstream{} << "Path provided to OS::load_program is not a valid ELF (magic number mismatch): " << current_program_path).str());
             std::memset(current_program_path, 0, count_of(current_program_path));
             return false;
         }
@@ -255,103 +269,6 @@ bool OS::load_program(std::string_view path)
     print("Program/Segment elf_header offset: 0x%08lx\n", elf_header.segment_header_offset);
     print("Section elf_header offset: 0x%08lx\n", elf_header.section_header_offset);
 
-    std::optional<std::uint32_t**> program_vectors;
-    std::optional<program_init_fn*> program_init;
-    std::optional<program_update_fn*> program_update;
-    if (0)
-    {
-        assume(elf_header.section_header_string_table_index > 0);
-        const FSIZE_t section_header_string_table_header_offset{ FSIZE_t(elf_header.section_header_string_table_index) * FSIZE_t(elf_header.section_header_entry_size) };
-        const FSIZE_t section_header_string_table_section_file_offset{ elf_header.section_header_offset + section_header_string_table_header_offset };
-        print("Loading section header string table\n");
-        reader.seek_absolute(section_header_string_table_section_file_offset);
-        SectionHeader section_header_string_table_header;
-        if (!reader.read<SectionHeader>(section_header_string_table_header))
-        {
-            print("Failed to read string table section header\n");
-            return false;
-        }
-        const FSIZE_t section_header_string_table_file_offset{ section_header_string_table_header.offset };
-        reader.seek_absolute(section_header_string_table_file_offset);
-        // Temporarily borrowing program RAM; whatever was there won't matter anymore anyway
-        StringTable section_header_string_table{
-            std::span{
-                reinterpret_cast<char*>(piconsole_program_ram_start),
-                section_header_string_table_header.size
-            }
-        };
-        if (!reader.read_bytes(section_header_string_table.get_data()))
-        {
-            print("Failed to read string table\n");
-            return false;
-        }
-        print("Scanning %d sections for program hooks...\n", elf_header.section_header_count);
-        const FSIZE_t section_header_table_offset{ static_cast<FSIZE_t>(elf_header.section_header_offset) };
-        reader.seek_absolute(section_header_table_offset);
-        for (std::size_t section_index{ 0 };
-            (!program_init.has_value() || !program_update.has_value()) && section_index < elf_header.section_header_count;
-            ++section_index)
-        {
-            SectionHeader section_header;
-            if (!reader.read<SectionHeader>(section_header))
-            {
-                print("\tFailed to read section header %d\n", section_index);
-                return false;
-            }
-            // Note: This is kinda a hack and should be replaced by finding the symbols and getting their addresses instead
-            if (section_header.type == SectionHeader::Type::ProgramData)
-            {
-                const char* section_name{ reinterpret_cast<const char*>(piconsole_program_ram_start) + section_header.string_table_name_index };
-                print("Section %u: %s (%p)\n", section_index, section_name, section_name);
-                if (std::strcmp(section_name, ".piconsole.program.init") == 0)
-                {
-                    if (program_init.has_value())
-                    {
-                        print("\t.piconsole.program.init has duplicate sections!");
-                        return false;
-                    }
-                    print("\t%s: Address=0x%08lx\n", section_name, section_header.address);
-                    program_init.emplace(reinterpret_cast<program_init_fn*>(section_header.address | 1lu));
-                }
-                else if (std::strcmp(section_name, ".piconsole.program.update") == 0)
-                {
-                    if (program_update.has_value())
-                    {
-                        print("\t\t\t.piconsole.program.update has duplicate sections!");
-                        return false;
-                    }
-                    print("\t%s: Address=0x%08lx\n", section_name, section_header.address);
-                    program_update.emplace(reinterpret_cast<program_update_fn*>(section_header.address | 1lu));
-                }
-                else if (std::strcmp(section_name, ".text.vectors") == 0)
-                {
-                    if (program_vectors.has_value())
-                    {
-                        print("\t\t\t.text has duplicate sections!");
-                        return false;
-                    }
-                    print("\t%s: Address=0x%08lx\n", section_name, section_header.address);
-                    program_vectors.emplace(reinterpret_cast<std::uint32_t**>(section_header.address));
-                }
-            }
-        }
-        // if (!program_init.has_value())
-        // {
-        //     print("Section missing for .piconsole.program.init\n");
-        //     return false;
-        // }
-        // else if (!program_update.has_value())
-        // {
-        //     print("Section missing for .piconsole.program.update\n");
-        //     return false;
-        // }
-        // else if (!program_vectors.has_value())
-        // {
-        //     print("Section missing for .text.vectors\n");
-        //     return false;
-        // }
-    }
-
     reader.seek_absolute(elf_header.segment_header_offset);
     print("Loading %d segments...\n", elf_header.segment_header_count);
     print("             idx: Type Offset     VirtAddr   PhysAddr   FileSize MemSize Flags (Raw)    Alignment\n");
@@ -362,7 +279,7 @@ bool OS::load_program(std::string_view path)
     {
         if (!reader.read<SegmentHeader>(segment_headers[i]))
         {
-            print("Failed to read segment header %d!\n", i);
+            show_os_error("OS::load_program failed to read segment header from program ELF");
             std::memset(current_program_path, 0, count_of(current_program_path));
             return false;
         }
@@ -438,7 +355,7 @@ bool OS::load_program(std::string_view path)
                 reader.seek_absolute(segment_header.content_offset);
                 if (!reader.read_bytes(segment_data))
                 {
-                    print("Failed to read segment data\n");
+                    show_os_error("Failed to read segment data while OS was loading program from ELF file");
                     return false;
                 }
                 // ...then we can write the whole thing back to flash.
@@ -481,13 +398,13 @@ bool OS::load_program(std::string_view path)
                 if (segment_header.virtual_address < piconsole_program_ram_start
                     || segment_header.virtual_address >= piconsole_program_ram_end)
                 {
-                    print("\tInvalid segment initialization! virtual_address != physical_address, but virtual_address isn't in program RAM!\n");
+                    show_os_error("Invalid segment initialization! virtual_address != physical_address, but virtual_address isn't in program RAM");
                     return false;
                 }
                 else if (segment_header.physical_address < piconsole_program_flash_start
                         || segment_header.physical_address >= piconsole_program_flash_end)
                 {
-                    print("\tInvalid segment initialization! virtual_address != physical_address, but physical_address isn't in program Flash!\n");
+                    show_os_error("Invalid segment initialization! virtual_address != physical_address, but physical_address isn't in program Flash");
                     return false;
                 }
                 // Defer segment copy into RAM to the end
@@ -509,7 +426,7 @@ bool OS::load_program(std::string_view path)
     {
         if (copy.virtual_address < piconsole_program_ram_start || copy.virtual_address >= piconsole_program_ram_end)
         {
-            print("\tAttempted deferred copy into non-program RAM");
+            show_os_error("OS::load_program attempted deferred copy into non-program RAM");
             return false;
         }
         switch (copy.source)
@@ -529,7 +446,7 @@ bool OS::load_program(std::string_view path)
                 reader.seek_absolute(copy.file_offset);
                 if (!reader.read_bytes(segment_data))
                 {
-                    print("Failed to read segment data in deferred_copy\n");
+                    show_os_error("OS::load_program failed to read segment data in deferred_copy");
                     return false;
                 }
                 const std::size_t remaining_bytes{ copy.memory_size - copy.segment_size };
@@ -618,3 +535,75 @@ bool OS::stop_program()
     program_running = false;
     return true;
 }
+
+void OS::show_program_error(std::string_view message)
+{
+    show_error_internal("! PROG ERROR !", message, "Press [START] to clear");
+}
+
+void OS::show_fatal_program_error(std::string_view message)
+{
+    show_error_internal("! PROG CRASH !", message, "Press [START] to restart OS");
+    stop_program();
+}
+
+void OS::show_os_error(std::string_view message)
+{
+    show_error_internal("! OS ERROR !", message, "Press [START] to clear");
+}
+
+void OS::show_fatal_os_error(std::string_view message)
+{
+    show_error_internal("! OS CRASH !", message, "");
+    while (true)
+    {
+        __breakpoint();
+    }
+}
+
+void OS::show_error_internal(std::string_view header, std::string_view message, std::string_view footer)
+{
+    const std::string debug_message{message};
+    print("Error: %s\n", debug_message.c_str());
+    if (lcd.is_initialized())
+    {
+        lcd.filled_rectangle(color::black<LCD_MODEL::ColorFormat>(), 4, 4, lcd.get_width() - 8, lcd.get_height() - 8);
+        lcd.rectangle(color::red<LCD_MODEL::ColorFormat>(), 6, 6, lcd.get_width() - 12, lcd.get_height() - 12);
+        lcd.centered_text(header, {
+            .x = lcd.get_width() / 2, .y = 8,
+            .color = color::red<LCD_MODEL::ColorFormat>()
+        });
+        lcd.text(message, {
+            .wrap_mode = gfx::text::WrapMode::Wrap,
+            .x = 0, .y = 16,
+            .end_y = lcd.get_height() - 12 + (footer.length() > 0 ? 8 : 0),
+            .padding_x = 8, .padding_y = 0,
+            .color = color::red<LCD_MODEL::ColorFormat>()
+        });
+        if (footer.length() > 0)
+        {
+            lcd.centered_text(footer, {
+                .wrap_mode = gfx::text::WrapMode::Wrap,
+                .x = lcd.get_width() / 2, .y = lcd.get_height() - 20,
+                .color = color::red<LCD_MODEL::ColorFormat>()
+            });
+        }
+        lcd.show();
+        if (input.is_initialized())
+        {
+            // Wait for Start to be released in case it's held
+            do
+            {
+                input.update();
+            } while (!input.get_button_state(Button::Start));
+            // Wait for Start to be pressed
+            do
+            {
+                input.update();
+            } while (input.get_button_state(Button::Start));
+        }
+        lcd.fill(color::black<LCD_MODEL::ColorFormat>());
+        lcd.show();
+    }
+}
+

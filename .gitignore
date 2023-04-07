@@ -1,1 +1,4 @@
 build/
+PICOnsole/PICOnsole-backups/**
+PICOnsole/#auto_saved_files#
+PICOnsole/_autosave*

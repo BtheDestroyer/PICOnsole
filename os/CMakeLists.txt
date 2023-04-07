@@ -32,9 +32,10 @@ target_compile_definitions(piconsole_os_lib
     PUBLIC
         LCD_MODEL=PicoLCD_1_8
         SD_SPI=spi0
+        _DEBUG=1
+        DEBUG=1
     
     PRIVATE
-        _DEBUG=1
         _PICONSOLE_OS=1
         _PICONSOLE_OS_LIB=1
 
@@ -54,8 +55,8 @@ target_compile_definitions(piconsole_os_lib
         SD_MOSI=3
         SD_MISO=4
 
-        "BUTTON_CATHODES=16,17,18"
-        "BUTTON_ANODES=19,20,21"
+        "BUTTON_CATHODES=16,17,21"
+        "BUTTON_ANODES=19,20,18"
 
         I2S_CLK=14
         I2S_LRC=15
@@ -64,11 +65,10 @@ target_compile_definitions(piconsole_os_lib
         VIBRATION_PIN=6
     
     INTERFACE
-        _DEBUG=1
         _PICONSOLE_PROGRAM=1
     )
 #target_compile_options(piconsole_os_lib PUBLIC -Ofast)
-target_compile_options(piconsole_os_lib PRIVATE -Og)
+target_compile_options(piconsole_os_lib PUBLIC -Og)
 
 pico_enable_stdio_usb(piconsole_os_lib 0)
 pico_enable_stdio_uart(piconsole_os_lib 1)

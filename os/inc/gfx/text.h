@@ -1,5 +1,4 @@
 #pragma once
-#include <array>
 #include <bitset>
 #include <concepts>
 #include <optional>
@@ -9,13 +8,14 @@
 
 namespace gfx::text
 {
+enum class WrapMode {
+    Clip,
+    Wrap
+};
 template <typename TLCD>
 struct PrintSettings
 {
-    enum class WrapMode {
-        Clip,
-        Wrap
-    } wrap_mode{ WrapMode::Clip };
+    WrapMode wrap_mode{ WrapMode::Clip };
     std::uint32_t x{ 0u };
     std::uint32_t y{ 0u };
     std::uint32_t end_x{ TLCD::width };
@@ -31,7 +31,7 @@ template <typename TLCD, std::size_t TWidth>
 PICONSOLE_FUNC void print_character_row(TLCD& lcd, const std::bitset<TWidth>& character_row,
     const PrintSettings<std::remove_cvref_t<TLCD>>& settings = {})
 {
-    std::uint32_t x{ settings.x };
+    std::uint32_t x{ settings.x + settings.padding_x };
     for (std::size_t i{ 0 }, b{ TWidth - 1}; i < TWidth; ++i, --b)
     {
         if (character_row.test(b))
@@ -39,13 +39,13 @@ PICONSOLE_FUNC void print_character_row(TLCD& lcd, const std::bitset<TWidth>& ch
             lcd.set_pixel(settings.color, x, settings.y);
         }
         ++x;
-        if (x > settings.end_x - settings.padding_x * 2u)
+        if (x > settings.end_x - settings.padding_x)
         {
             switch (settings.wrap_mode)
             {
-            case PrintSettings<std::remove_cvref_t<TLCD>>::WrapMode::Clip:
+            case WrapMode::Clip:
                 return;
-            case PrintSettings<std::remove_cvref_t<TLCD>>::WrapMode::Wrap:
+            case WrapMode::Wrap:
                 x = settings.wrap_x;
                 break;
             }
@@ -84,7 +84,7 @@ PICONSOLE_FUNC void print_string(TLCD& lcd, std::string_view string, const TType
 {
     const std::uint32_t character_width{ get_typeface_character_width<TTypeface>() + 1u };
     const std::uint32_t character_height{ get_typeface_character_height<TTypeface>() + 1u };
-    const std::uint32_t wrapped_line_width{ (settings.end_x - settings.padding_x * 2u) - (settings.wrap_x + settings.padding_x) };
+    const std::uint32_t wrapped_line_width{ (settings.end_x - settings.padding_x) - (settings.wrap_x + settings.padding_x) };
     for (char character : string)
     {
         switch (character)

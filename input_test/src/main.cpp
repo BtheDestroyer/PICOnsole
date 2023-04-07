@@ -13,7 +13,7 @@ void isr_hardfault()
 
 piconsole_program_init
 {
-    constexpr static RGB565 color{ color::dark_grey<RGB565>() };
+    constexpr static RGB565 color{ color::grey<RGB565>() };
     LCD_MODEL &lcd{ os.get_lcd() };
     lcd.fill(color);
     lcd.show();
@@ -25,12 +25,15 @@ piconsole_program_update
     constexpr static RGB565 color{ color::dark_grey<RGB565>() };
     LCD_MODEL &lcd{ os.get_lcd() };
     lcd.fill(color);
-    lcd.text("Input Test", {
+    lcd.show();
+    const LCD_MODEL::TextSettings title_settings{
       .x = 4, .y = 32,
       .padding_x = 16, .padding_y = 4,
       .color = color::white<RGB565>(),
       .background = color::black<RGB565>()
-    });
+    };
+    lcd.text("Input Test", title_settings);
+    lcd.show();
     const InputMap& input{ os.get_input() };
     if (input.get_button_state(Button::A))
     {
@@ -40,6 +43,7 @@ piconsole_program_update
     {
        lcd.rectangle(color::green<RGB565>(), 80, 96, 8, 8); 
     }
+    lcd.show();
     if (input.get_button_state(Button::B))
     {
        lcd.filled_rectangle(color::red<RGB565>(), 96, 80, 8, 8); 
@@ -64,6 +68,7 @@ piconsole_program_update
     {
        lcd.rectangle(color::yellow<RGB565>(), 80, 64, 8, 8); 
     }
+    lcd.show();
     if (input.get_button_state(Button::DPad_Down))
     {
        lcd.filled_rectangle(color::grey<RGB565>(), 32, 96, 8, 8); 
@@ -96,6 +101,7 @@ piconsole_program_update
     {
        lcd.rectangle(color::grey<RGB565>(), 32, 64, 8, 8); 
     }
+    lcd.show();
     if (input.get_button_state(Button::Start))
     {
        lcd.filled_rectangle(color::black<RGB565>(), 56, 48, 8, 8); 
@@ -115,6 +121,10 @@ int __attribute__((section(".piconsole.program.main"))) main()
 {
     multicore_fifo_push_blocking(FIFOCodes::program_launch_success);
     OS& os{ OS::get() };
+    if (!os.is_initialized())
+    {
+      os.init();
+    }
     _piconsole_program_init(os);
     while (true)
     {
