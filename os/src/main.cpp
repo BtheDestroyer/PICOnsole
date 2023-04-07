@@ -53,7 +53,10 @@ int os_main()
     print("OS main()");
     print("&os: 0x%x\n", &os);
     
-    os.get_lcd().text(8, 8, "Loading Program:\n/programs/boot.elf", color::white<RGB565>(), color::black<RGB565>());
+    os.get_lcd().text("Loading Program:\n/programs/boot.elf", {
+        .x = 8, .y = 16,
+        .color = color::white<RGB565>(), .background = color::black<RGB565>()
+    });
     os.get_lcd().show();
     
     {

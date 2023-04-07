@@ -2,12 +2,8 @@
 #include "pico/stdlib.h"
 #include "pico/time.h"
 #include "pico/binary_info.h"
-#include "hardware/dma.h"
 #include "debug.h"
 #include <stdlib.h>
-#include "gfx/text.h"
-#include "gfx/typeface.h"
-#include "gfx/typefaces/ascii_5px.h"
 
 #undef __debug_noinline
 #if _DEBUG
@@ -259,78 +255,4 @@ void PicoLCD_1_8::show()
         reinterpret_cast<std::uint8_t*>(buf.data()),
         get_buffer().size() * get_bytes_per_pixel()
         });
-}
-
-static PicoLCD_1_8::ColorFormat PicoLCD_1_8_fill_source_color{};
-void PicoLCD_1_8::fill(ColorFormat color)
-{
-    if (dma_channel_is_busy(dma_channel))
-    {
-        dma_channel_abort(dma_channel); // We don't care about the last transfer when filling the whole screen
-    }
-    PicoLCD_1_8_fill_source_color = color;
-    dma_channel_config config{ dma_channel_get_default_config(dma_channel) };
-    channel_config_set_transfer_data_size(&config, DMA_SIZE_16);
-    channel_config_set_read_increment(&config, false);
-    channel_config_set_write_increment(&config, true);
-    dma_channel_configure(
-        dma_channel,
-        &config,
-        get_buffer().data(),
-        &PicoLCD_1_8_fill_source_color.data,
-        get_buffer().size(),
-        true
-    );
-    dma_channel_wait_for_finish_blocking(dma_channel);
-}
-
-void PicoLCD_1_8::line_horizontal(ColorFormat color, std::size_t x, std::size_t y, std::size_t width)
-{
-    dma_channel_wait_for_finish_blocking(dma_channel);
-    static ColorFormat source_color{};
-    source_color = color;
-    dma_channel_config config{ dma_channel_get_default_config(dma_channel) };
-    channel_config_set_transfer_data_size(&config, DMA_SIZE_16);
-    channel_config_set_read_increment(&config, false);
-    channel_config_set_write_increment(&config, true);
-    const std::size_t start_offset{ x + y * get_width() };
-    dma_channel_configure(
-        dma_channel,
-        &config,
-        get_buffer().data() + start_offset,
-        &source_color.data,
-        width,
-        true
-    );
-}
-
-void PicoLCD_1_8::line_vertical(ColorFormat color, std::size_t x, std::size_t y, std::size_t height)
-{
-    const std::size_t end_y{ y + height };
-    while (y < end_y)
-    {
-        set_pixel(color, x, y);
-        ++y;
-    }
-}
-
-void PicoLCD_1_8::line(ColorFormat color, std::size_t start_x, std::size_t start_y, std::size_t end_x, std::size_t end_y)
-{
-    // TODO
-}
-
-void PicoLCD_1_8::text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color)
-{
-    print_string(*this, string, x, y, color);
-}
-
-void PicoLCD_1_8::text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color, ColorFormat background, std::size_t padding_x, std::size_t padding_y)
-{
-    filled_rectangle(background, x, y, padding_x * 2 + get_string_width(string), padding_y * 2 + get_string_height(string));
-    text(x + padding_x, y + padding_y, string, color);
-}
-
-void PicoLCD_1_8::wait_for_dma() const
-{
-    dma_channel_wait_for_finish_blocking(dma_channel);
 }

@@ -5,8 +5,13 @@
 #include <span>
 #include <string_view>
 #include "PICOnsole_defines.h"
-#include "hardware/spi.h"
+#include "hardware/dma.h"
 #include "hardware/pwm.h"
+#include "hardware/spi.h"
+#include "gfx/color.h"
+#include "gfx/typeface.h"
+#include "gfx/typefaces/ascii_5px.h"
+#include "gfx/text.h"
 
 extern "C"
 {
@@ -19,82 +24,6 @@ extern "C"
     void **__piconsole_lcd_buffer_end { (void**)0x2000a468 };
 #endif
 }
-
-inline consteval std::uint8_t operator ""_b(unsigned long long v)
-{
-    return static_cast<std::uint8_t>(v);
-}
-
-class ColorFormat {};
-
-template <typename T>
-concept colorformat_t = std::derived_from<T, ColorFormat>;
-
-namespace color
-{
-    template <colorformat_t TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat black() { return TColorFormat{static_cast<std::uint8_t>(0x00)}; }
-    template <colorformat_t TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat dark_grey() { return TColorFormat{static_cast<std::uint8_t>(0x44)}; }
-    template <colorformat_t TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat grey() { return TColorFormat{static_cast<std::uint8_t>(0x88)}; }
-    template <colorformat_t TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat light_grey() { return TColorFormat{static_cast<std::uint8_t>(0xCC)}; }
-    template <colorformat_t TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat white() { return TColorFormat{static_cast<std::uint8_t>(0xFF)}; }
-
-    template <colorformat_t TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat red() { return TColorFormat{0xFF, 0x00, 0x00}; }
-    template <colorformat_t TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat green() { return TColorFormat{0x00, 0xFF, 0x00}; }
-    template <colorformat_t TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat blue() { return TColorFormat{0x00, 0x00, 0xFF}; }
-
-    template <colorformat_t TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat yellow() { return TColorFormat{0xFF, 0xFF, 0x00}; }
-    template <colorformat_t TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat cyan() { return TColorFormat{0x00, 0xFF, 0xFF}; }
-    template <colorformat_t TColorFormat>
-    requires std::derived_from<TColorFormat, ColorFormat>
-    inline constexpr TColorFormat magenta() { return TColorFormat{0xFF, 0x00, 0xFF}; }
-}
-
-class RGB565 : public ColorFormat
-{
-public:
-    constexpr RGB565(std::uint8_t r, std::uint8_t g, std::uint8_t b)
-    {
-        r >>= 3; // 8-bit -> 5 bit
-        g >>= 2; // 8-bit -> 6 bit
-        b >>= 3; // 8-bit -> 5 bit
-
-        data = r << 3 | (g & 0b000111) << 13 | (g & 0b111000) >> 3 | b << 8;
-    }
-    constexpr RGB565(std::uint8_t gs = 0x00) : RGB565(gs, gs, gs) {}
-    template <std::floating_point TFloat>
-    constexpr RGB565(TFloat r, TFloat g, TFloat b)
-        : RGB565(
-            static_cast<std::uint8_t>(std::clamp(r, TFloat{0.}, TFloat{1.}) * 255_b),
-            static_cast<std::uint8_t>(std::clamp(g, TFloat{0.}, TFloat{1.}) * 255_b),
-            static_cast<std::uint8_t>(std::clamp(b, TFloat{0.}, TFloat{1.}) * 255_b)
-        ) {}
-    constexpr RGB565(std::uint16_t color) : data{color} {}
-    
-    GETTER constexpr explicit operator std::uint16_t&() { return data; }
-    GETTER constexpr explicit operator const std::uint16_t&() const { return data; }
-
-    std::uint16_t data{ 0 };
-};
 
 class SPILCD
 {
@@ -137,8 +66,7 @@ private:
     pwm_config backlight_config;
 };
 
-template <typename TColorFormat, std::size_t TWidth, std::size_t THeight>
-requires std::derived_from<TColorFormat, ColorFormat>
+template <colorformat_t TColorFormat, std::size_t TWidth, std::size_t THeight>
 class ColorLCD : public SPILCD
 {
 public:
@@ -147,14 +75,23 @@ public:
     constexpr static std::size_t height{ THeight };
     constexpr static std::size_t buffer_size{ width * height * sizeof(ColorFormat) };
     using buffer_type = std::array<ColorFormat, width * height>;
+    using TextSettings = gfx::text::PrintSettings<ColorLCD<TColorFormat, TWidth, THeight>>;
+
+    PICONSOLE_MEMBER_FUNC ~ColorLCD() {}
 
     GETTER PICONSOLE_MEMBER_FUNC constexpr std::size_t get_bytes_per_pixel() const override { return sizeof(ColorFormat); };
     GETTER PICONSOLE_MEMBER_FUNC constexpr std::size_t get_width() const override { return TWidth; }
     GETTER PICONSOLE_MEMBER_FUNC constexpr std::size_t get_height() const override { return THeight; }
 
     // Drawing
-    GETTER PICONSOLE_MEMBER_FUNC const ColorFormat& get_pixel(std::size_t x, std::size_t y) const = 0;
-    PICONSOLE_MEMBER_FUNC void set_pixel(ColorFormat color, std::size_t x, std::size_t y) = 0;
+    GETTER PICONSOLE_MEMBER_FUNC const ColorFormat& get_pixel(std::size_t x, std::size_t y) const
+    {
+        return this->get_buffer()[x + y * this->get_width()];
+    }
+    PICONSOLE_MEMBER_FUNC void set_pixel(ColorFormat color, std::size_t x, std::size_t y)
+    {
+        this->get_buffer()[x + y * this->get_width()] = color;
+    }
     PICONSOLE_MEMBER_FUNC void fill(ColorFormat color) = 0;
     PICONSOLE_MEMBER_FUNC void line_horizontal(ColorFormat color, std::size_t x, std::size_t y, std::size_t width) = 0;
     PICONSOLE_MEMBER_FUNC void line_vertical(ColorFormat color, std::size_t x, std::size_t y, std::size_t height) = 0;
@@ -187,55 +124,174 @@ public:
             ++y;
         }
     }
-    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color = color::white<ColorFormat>()) = 0;
-    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color, ColorFormat background, std::size_t padding = 2)
-    {
-        text(x, y, string, color, background, padding, padding);
-    }
-    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color, ColorFormat background, std::size_t padding_x, std::size_t padding_y) = 0;
+    PICONSOLE_MEMBER_FUNC void text(std::string_view string, TextSettings settings = {}) = 0;
+    PICONSOLE_MEMBER_FUNC void centered_text(std::string_view string, TextSettings settings = {}) = 0;
 
 protected:
     #if _PICONSOLE_OS
-    static inline buffer_type &get_buffer() { return *reinterpret_cast<buffer_type*>(__piconsole_lcd_buffer); }
+    static inline buffer_type &get_buffer() { return *reinterpret_cast<buffer_type*>(&__piconsole_lcd_buffer); }
     #else
     static buffer_type &get_buffer();
     #endif
 };
 
-class PicoLCD_1_8 : public ColorLCD<RGB565, 160, 128>
+template <std::size_t TWidth, std::size_t THeight>
+class ColorLCD_RGB565 : public ColorLCD<RGB565, TWidth, THeight>
 {
 public:
-    using ColorLCD::buffer_size;
-    using ColorLCD::buffer_type;
-    using ColorLCD::ColorFormat;
+    using super = ColorLCD<RGB565, TWidth, THeight>; 
+    using buffer_type = super::buffer_type;
+    using ColorFormat = super::ColorFormat;
+    using TextSettings = super::TextSettings;
+
+    PICONSOLE_MEMBER_FUNC ~ColorLCD_RGB565() {}
+
+    // Drawing
+    PICONSOLE_MEMBER_FUNC void fill(ColorFormat color) override
+    {
+        if (dma_channel_is_busy(dma_channel))
+        {
+            dma_channel_abort(dma_channel); // We don't care about the last transfer when filling the whole screen
+        }
+        static ColorFormat fill_source_color{};
+        fill_source_color = color;
+        dma_channel_config config{ dma_channel_get_default_config(dma_channel) };
+        channel_config_set_transfer_data_size(&config, DMA_SIZE_16);
+        channel_config_set_read_increment(&config, false);
+        channel_config_set_write_increment(&config, true);
+        wait_for_dma();
+        dma_channel_configure(
+            dma_channel,
+            &config,
+            this->get_buffer().data(),
+            &fill_source_color.data,
+            this->get_buffer().size(),
+            true
+        );
+        wait_for_dma();
+    }
+    PICONSOLE_MEMBER_FUNC void line_horizontal(ColorFormat color, std::size_t x, std::size_t y, std::size_t width) override
+    {
+        static ColorFormat source_color{};
+        source_color = color;
+        dma_channel_config config{ dma_channel_get_default_config(dma_channel) };
+        channel_config_set_transfer_data_size(&config, DMA_SIZE_16);
+        channel_config_set_read_increment(&config, false);
+        channel_config_set_write_increment(&config, true);
+        const std::size_t start_offset{ x + y * this->get_width() };
+        wait_for_dma();
+        dma_channel_configure(
+            dma_channel,
+            &config,
+            this->get_buffer().data() + start_offset,
+            &source_color.data,
+            width,
+            true
+        );
+    }
+    PICONSOLE_MEMBER_FUNC void line_vertical(ColorFormat color, std::size_t x, std::size_t y, std::size_t height) override
+    {
+        const std::size_t end_y{ y + height };
+        while (y < end_y)
+        {
+            this->set_pixel(color, x, y);
+            ++y;
+        }
+    }
+    PICONSOLE_MEMBER_FUNC void line(ColorFormat color, std::size_t start_x, std::size_t start_y, std::size_t end_x, std::size_t end_y) override
+    {
+        // TODO
+    }
+    PICONSOLE_MEMBER_FUNC void text(std::string_view string, TextSettings settings = {}) override
+    {
+        if (settings.background.has_value())
+        {
+            this->filled_rectangle(settings.background.value(), settings.x, settings.y,
+                settings.padding_x * 2u + get_string_width(string),
+                settings.padding_y.value_or(settings.padding_x) * 2u + get_string_height(string));
+        }
+        const auto& typeface{ get_ascii_typeface() };
+        using Typeface = std::remove_cvref_t<decltype(typeface)>;
+        const std::uint32_t character_width{ get_typeface_character_width<Typeface>() + 1u };
+        const std::uint32_t character_height{ get_typeface_character_height<Typeface>() + 1u };
+        while (!string.empty() && settings.y < settings.end_y)
+        {
+            const std::uint32_t max_line_width_px{ settings.end_x - settings.x };
+            const std::size_t newline_index{ string.find('\n') };
+            const std::uint32_t line_width_characters{
+                std::min<std::uint32_t>(
+                    std::min<std::uint32_t>(max_line_width_px / character_width, string.length()),
+                    newline_index
+                )
+            };
+            const bool has_newline{ newline_index != std::string_view::npos };
+            const std::uint32_t line_width_px{ std::min<std::uint32_t>(line_width_characters * character_width, max_line_width_px) };
+            std::string_view line{ string.substr(0, line_width_characters) };
+            gfx::text::print_string<super>(*this, line, typeface, settings);
+            if (settings.wrap_mode == TextSettings::WrapMode::Clip && !has_newline)
+            {
+                return;
+            }
+            string = string.substr(line_width_characters + (has_newline ? 1u : 0u));
+            settings.y += character_height;
+            settings.x = settings.wrap_x;
+        }
+    }
+    PICONSOLE_MEMBER_FUNC void centered_text(std::string_view string, TextSettings settings = {}) override
+    {
+        // TODO: Add background based on widest line
+        const auto& typeface{ get_ascii_typeface() };
+        using Typeface = std::remove_cvref_t<decltype(typeface)>;
+        const std::uint32_t character_width{ get_typeface_character_width<Typeface>() + 1u };
+        const std::uint32_t character_height{ get_typeface_character_height<Typeface>() + 1u };
+        while (!string.empty() && settings.y < settings.end_y)
+        {
+            const std::uint32_t max_line_width_px{ (settings.end_x - settings.x) * 2u };
+            const std::size_t newline_index{ string.find('\n') };
+            const std::uint32_t line_width_characters{
+                std::min<std::uint32_t>(
+                    std::min<std::uint32_t>(max_line_width_px / character_width, string.length()),
+                    newline_index
+                )
+            };
+            const bool has_newline{ newline_index != std::string_view::npos };
+            const std::uint32_t line_width_px{ std::min<std::uint32_t>(line_width_characters * character_width, max_line_width_px) };
+            TextSettings line_settings{ settings };
+            line_settings.x -= line_width_px / 2u;
+            std::string_view line{ string.substr(0, line_width_characters) };
+            gfx::text::print_string<super>(*this, line, typeface, line_settings);
+            if (settings.wrap_mode == TextSettings::WrapMode::Clip && !has_newline)
+            {
+                return;
+            }
+            string = string.substr(line_width_characters + (has_newline ? 1u : 0u));
+            settings.y += character_height;
+            settings.x = settings.wrap_x;
+        }
+    }
+
+    PICONSOLE_MEMBER_FUNC void wait_for_dma() const
+    {
+        if (dma_channel != -1)
+        {
+            dma_channel_wait_for_finish_blocking(dma_channel);
+        }
+    }
+
+protected:
+    int dma_channel{ -1 };
+};
+
+class PicoLCD_1_8 : public ColorLCD_RGB565<160, 128>
+{
+public:
+    using ColorLCD_RGB565::buffer_size;
+    using ColorLCD_RGB565::buffer_type;
+    using ColorLCD_RGB565::ColorFormat;
 
     PICONSOLE_MEMBER_FUNC bool init(bool final_step = true);
     PICONSOLE_MEMBER_FUNC bool uninit();
     PICONSOLE_MEMBER_FUNC ~PicoLCD_1_8();
 
     PICONSOLE_MEMBER_FUNC void show() override;
-
-    // Drawing
-    GETTER PICONSOLE_MEMBER_FUNC const ColorFormat& get_pixel(std::size_t x, std::size_t y) const override
-    {
-        return get_buffer()[x + y * get_width()];
-    }
-    PICONSOLE_MEMBER_FUNC void set_pixel(ColorFormat color, std::size_t x, std::size_t y) override
-    {
-        get_buffer()[x + y * get_width()] = color;
-    }
-    PICONSOLE_MEMBER_FUNC void fill(ColorFormat color) override;
-    PICONSOLE_MEMBER_FUNC void line_horizontal(ColorFormat color, std::size_t x, std::size_t y, std::size_t width) override;
-    PICONSOLE_MEMBER_FUNC void line_vertical(ColorFormat color, std::size_t x, std::size_t y, std::size_t height) override;
-    PICONSOLE_MEMBER_FUNC void line(ColorFormat color, std::size_t start_x, std::size_t start_y, std::size_t end_x, std::size_t end_y) override;
-    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color = color::white<ColorFormat>()) override;
-    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color, ColorFormat background, std::size_t padding = 2)
-    {
-        text(x, y, string, color, background, padding, padding);
-    }
-    PICONSOLE_MEMBER_FUNC void text(std::size_t x, std::size_t y, std::string_view string, ColorFormat color, ColorFormat background, std::size_t padding_x, std::size_t padding_y) override;
-    PICONSOLE_MEMBER_FUNC void wait_for_dma() const;
-
-private:
-    int dma_channel{ -1 };
 };

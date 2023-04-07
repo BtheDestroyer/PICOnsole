@@ -6,6 +6,11 @@
 extern "C" {
 #endif
 
+void isr_hardfault()
+{
+   multicore_fifo_push_blocking(FIFOCodes::error_crash);
+}
+
 piconsole_program_init
 {
     constexpr static RGB565 color{ color::dark_grey<RGB565>() };
@@ -20,7 +25,12 @@ piconsole_program_update
     constexpr static RGB565 color{ color::dark_grey<RGB565>() };
     LCD_MODEL &lcd{ os.get_lcd() };
     lcd.fill(color);
-    lcd.text(4, 32, "Input Test", color::white<RGB565>(), color::black<RGB565>(), 16, 4);
+    lcd.text("Input Test", {
+      .x = 4, .y = 32,
+      .padding_x = 16, .padding_y = 4,
+      .color = color::white<RGB565>(),
+      .background = color::black<RGB565>()
+    });
     const InputMap& input{ os.get_input() };
     if (input.get_button_state(Button::A))
     {
