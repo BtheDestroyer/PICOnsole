@@ -1,0 +1,27 @@
+(kicad_sch (version 20230121) (generator eeschema)
+
+  (uuid 25b580c0-906d-476c-a8dc-9aebfa5c113f)
+
+  (paper "A4")
+
+  (lib_symbols
+  )
+
+
+  (sheet (at 16.51 16.51) (size 12.7 3.81) (fields_autoplaced)
+    (stroke (width 0.1524) (type solid))
+    (fill (color 0 0 0 0.0000))
+    (uuid fe254206-5310-4851-bbe3-983c1e9139eb)
+    (property "Sheetname" "User Pico" (at 16.51 15.7984 0)
+      (effects (font (size 1.27 1.27)) (justify left bottom))
+    )
+    (property "Sheetfile" "user_pico.kicad_sch" (at 16.51 20.9046 0)
+      (effects (font (size 1.27 1.27)) (justify left top))
+    )
+    (instances
+      (project "PICOnsole"
+        (path "/9538e4ed-27e6-4c37-b989-9859dc0d49e8/5cbf7096-44d5-480e-8cb3-0de75a480e68" (page "10"))
+      )
+    )
+  )
+)

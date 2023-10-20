@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name "PICOnsole")(type "KiCad")(uri "${KIPRJMOD}/PICOnsole.pretty")(options "")(descr ""))
+)

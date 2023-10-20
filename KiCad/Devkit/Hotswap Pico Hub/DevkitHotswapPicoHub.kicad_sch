@@ -1,0 +1,102 @@
+(kicad_sch (version 20230121) (generator eeschema)
+
+  (uuid 9538e4ed-27e6-4c37-b989-9859dc0d49e8)
+
+  (paper "A4")
+
+  (title_block
+    (title "PICOnsole")
+    (rev "1")
+    (company "Bryce Dixon")
+  )
+
+  (lib_symbols
+  )
+
+
+  (rectangle (start 21.59 29.21) (end 52.07 71.12)
+    (stroke (width 0) (type default))
+    (fill (type none))
+    (uuid c459acee-1e72-401d-8d07-10aae6867831)
+  )
+
+  (text_box "Internals"
+    (at 21.59 22.86 0) (size 20.32 6.35)
+    (stroke (width 0) (type default))
+    (fill (type none))
+    (effects (font (size 2.54 2.54)) (justify left top))
+    (uuid 531747a1-d726-4e98-8b58-af321b1f9392)
+  )
+
+  (sheet (at 22.86 43.18) (size 12.7 3.81) (fields_autoplaced)
+    (stroke (width 0.1524) (type solid))
+    (fill (color 0 0 0 0.0000))
+    (uuid 0d723066-7df4-4ebf-991e-b2ac94b6ffc4)
+    (property "Sheetname" "User Pico" (at 22.86 42.4684 0)
+      (effects (font (size 1.27 1.27)) (justify left bottom))
+    )
+    (property "Sheetfile" "user_pico.kicad_sch" (at 22.86 47.5746 0)
+      (effects (font (size 1.27 1.27)) (justify left top))
+    )
+    (instances
+      (project "DevkitHotswapPicoHub"
+        (path "/9538e4ed-27e6-4c37-b989-9859dc0d49e8" (page "3"))
+      )
+    )
+  )
+
+  (sheet (at 22.86 53.34) (size 12.7 3.81) (fields_autoplaced)
+    (stroke (width 0.1524) (type solid))
+    (fill (color 0 0 0 0.0000))
+    (uuid 63b3856c-5278-4dfe-87dd-9845c6ed1582)
+    (property "Sheetname" "Debugging" (at 22.86 52.6284 0)
+      (effects (font (size 1.27 1.27)) (justify left bottom))
+    )
+    (property "Sheetfile" "debugging.kicad_sch" (at 22.86 57.7346 0)
+      (effects (font (size 1.27 1.27)) (justify left top))
+    )
+    (instances
+      (project "DevkitHotswapPicoHub"
+        (path "/9538e4ed-27e6-4c37-b989-9859dc0d49e8" (page "4"))
+      )
+    )
+  )
+
+  (sheet (at 22.86 33.02) (size 12.7 3.81) (fields_autoplaced)
+    (stroke (width 0.1524) (type solid))
+    (fill (color 0 0 0 0.0000))
+    (uuid 9653cf96-af0f-4d52-9a8a-39b26813992e)
+    (property "Sheetname" "OS Pico" (at 22.86 32.3084 0)
+      (effects (font (size 1.27 1.27)) (justify left bottom))
+    )
+    (property "Sheetfile" "os_pico.kicad_sch" (at 22.86 37.4146 0)
+      (effects (font (size 1.27 1.27)) (justify left top))
+    )
+    (instances
+      (project "DevkitHotswapPicoHub"
+        (path "/9538e4ed-27e6-4c37-b989-9859dc0d49e8" (page "2"))
+      )
+    )
+  )
+
+  (sheet (at 22.86 63.5) (size 12.7 3.81) (fields_autoplaced)
+    (stroke (width 0.1524) (type solid))
+    (fill (color 0 0 0 0.0000))
+    (uuid e706661b-569c-4baf-a014-cda724e31831)
+    (property "Sheetname" "Control Bus" (at 22.86 62.7884 0)
+      (effects (font (size 1.27 1.27)) (justify left bottom))
+    )
+    (property "Sheetfile" "control_bus.kicad_sch" (at 22.86 67.8946 0)
+      (effects (font (size 1.27 1.27)) (justify left top))
+    )
+    (instances
+      (project "DevkitHotswapPicoHub"
+        (path "/9538e4ed-27e6-4c37-b989-9859dc0d49e8" (page "5"))
+      )
+    )
+  )
+
+  (sheet_instances
+    (path "/" (page "1"))
+  )
+)
