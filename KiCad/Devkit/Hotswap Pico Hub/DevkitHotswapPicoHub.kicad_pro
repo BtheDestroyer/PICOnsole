@@ -46,23 +46,14 @@
         "silk_text_upright": false,
         "zones": {
           "45_degree_only": false,
-          "min_clearance": 0.508
+          "min_clearance": 0.39999999999999997
         }
       },
       "diff_pair_dimensions": [],
       "drc_exclusions": [
         "starved_thermal|115570000|56515000|851f4b61-48b6-4f8c-b38a-694c6a6c9370|5a80299b-023d-4463-b8d0-fa560a460a84|B.Cu",
         "starved_thermal|115570000|59055000|851f4b61-48b6-4f8c-b38a-694c6a6c9370|6ea1f53f-a1cf-4ef6-95d4-b3f9d6e634b0|B.Cu",
-        "starved_thermal|115570000|61595000|851f4b61-48b6-4f8c-b38a-694c6a6c9370|ad17ad2e-f7ee-4040-99fe-15619480b45b|B.Cu",
-        "starved_thermal|133350000|48895000|851f4b61-48b6-4f8c-b38a-694c6a6c9370|efa9c77e-f8b1-4f40-9d16-7b653c303263|F.Cu",
-        "starved_thermal|133350000|61595000|851f4b61-48b6-4f8c-b38a-694c6a6c9370|560bd2ab-29ce-46a6-b493-7ff01d60cd32|B.Cu",
-        "starved_thermal|133350000|74295000|851f4b61-48b6-4f8c-b38a-694c6a6c9370|8edea2a8-5bbf-4bed-bb7c-bd8e4b11c426|B.Cu",
-        "starved_thermal|133350000|86995000|851f4b61-48b6-4f8c-b38a-694c6a6c9370|da00e9d7-f79e-4332-a4dd-eb66349527d8|B.Cu",
-        "starved_thermal|20320000|48895000|851f4b61-48b6-4f8c-b38a-694c6a6c9370|294989bb-aed4-4f10-9066-ac78bd9064b3|F.Cu",
-        "starved_thermal|38100000|48895000|851f4b61-48b6-4f8c-b38a-694c6a6c9370|5f5063d2-f67c-4aeb-bd26-6d2f7930daf3|F.Cu",
-        "starved_thermal|38100000|74295000|851f4b61-48b6-4f8c-b38a-694c6a6c9370|8999795e-7a69-4822-ad3c-6dc3f54a6279|B.Cu",
-        "track_dangling|55088604|64925000|cecc778c-880f-4a58-8b57-ea5a31cd115b|00000000-0000-0000-0000-000000000000",
-        "track_dangling|55245000|74295000|acdc3497-f135-4f94-adb3-f71782889941|00000000-0000-0000-0000-000000000000"
+        "starved_thermal|115570000|61595000|851f4b61-48b6-4f8c-b38a-694c6a6c9370|ad17ad2e-f7ee-4040-99fe-15619480b45b|B.Cu"
       ],
       "meta": {
         "version": 2
